@@ -35,9 +35,9 @@ jobs:
           installer = pathlib.Path('CopyCheckSetup.exe').read_bytes()
           if installer[:2] != b'MZ' or hashlib.sha256(installer).hexdigest() != manifest['sha256']:
               raise SystemExit('Installer does not match release.json. Run Build.ps1 first.')
-          with open(os.environ['GITHUB_ENV'], 'a') as env:
-              env.write('RELEASE_TAG=v' + version + '\n')
+          pathlib.Path('release-tag.txt').write_text('v' + version)
           PY
+          RELEASE_TAG="$(cat release-tag.txt)"
           if gh release view "$RELEASE_TAG" >/dev/null 2>&1; then
             echo "This version already has a release. Increase the version before publishing another update."
             exit 1
