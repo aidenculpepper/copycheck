@@ -26,6 +26,6 @@ Exit CopyCheck from its tray menu, then uninstall it through **Windows Settings 
 
 ## Version and verification
 
-Version 1.0.6. SHA256SUMS.txt contains the installer checksum. The installer is not code-signed.
+Version 1.0.6. The installer is not code-signed.
 
 App and installer builds, task XML validation, preference checks, and icon checks passed. Full elevated installation, uninstall, and startup after sign-in still require testing.
