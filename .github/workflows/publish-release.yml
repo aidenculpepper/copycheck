@@ -1,0 +1,46 @@
+name: Publish CopyCheck release
+on:
+  push:
+    branches: [main]
+    paths: [CopyCheckSetup.exe, release.json, RELEASE_NOTES.md, .github/workflows/publish-release.yml]
+permissions:
+  contents: write
+concurrency:
+  group: copycheck-release
+  cancel-in-progress: false
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Fetch the exact pushed files
+        env:
+          REPOSITORY: ${{ github.repository }}
+          COMMIT: ${{ github.sha }}
+        run: |
+          git init .
+          git remote add origin "https://github.com/$REPOSITORY.git"
+          git fetch --depth=1 origin "$COMMIT"
+          git checkout --detach FETCH_HEAD
+      - name: Validate installer and publish release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          python3 - <<'PY'
+          import hashlib, json, pathlib, re, os
+          manifest = json.loads(pathlib.Path('release.json').read_text(encoding='utf-8-sig'))
+          version = manifest['version']
+          if not re.fullmatch(r'\d+\.\d+\.\d+', version):
+              raise SystemExit('Version must have the form 1.0.7')
+          installer = pathlib.Path('CopyCheckSetup.exe').read_bytes()
+          if installer[:2] != b'MZ' or hashlib.sha256(installer).hexdigest() != manifest['sha256']:
+              raise SystemExit('Installer does not match release.json. Run Build.ps1 first.')
+          with open(os.environ['GITHUB_ENV'], 'a') as env:
+              env.write('RELEASE_TAG=v' + version + '\n')
+          PY
+          if gh release view "$RELEASE_TAG" >/dev/null 2>&1; then
+            echo "This version already has a release. Increase the version before publishing another update."
+            exit 1
+          fi
+          gh release create "$RELEASE_TAG" CopyCheckSetup.exe --target "$GITHUB_SHA" --title "CopyCheck $RELEASE_TAG" --notes-file RELEASE_NOTES.md --draft
+          gh release edit "$RELEASE_TAG" --draft=false --latest

@@ -1,0 +1,1 @@
+Automatic GitHub update checks, manual installation, and an installer that fetches the newest stable release. Preserves startup and administrator settings during upgrades. Windows 10/11 x64; unsigned installer.

@@ -1,31 +1,18 @@
-# CopyCheck
+# CopyCheck Update 007 — Updates
 
-A small Windows tray app that displays a checkmark after a successful Ctrl+C copy, beside the final selected character when the application exposes its text position.
+Version 1.0.7. Windows 10/11 x64. Run CopyCheckSetup.exe to install. Setup checks the latest public GitHub Release first: if a newer installer exists, it downloads, verifies, and launches it. If the check fails, setup asks explicitly before installing the bundled version.
 
-## Download and install
+Settings includes Check for updates, an automatic-check toggle (on by default), installed version/status, and Install update when a newer release is found. Automatic checks run at launch and every six hours; installation always requires a click. Downloads must match the GitHub release asset size and SHA-256 digest. Drafts, prereleases, downgrades, foreign installer URLs, incomplete downloads, and invalid checksums are rejected. Checks use anonymous public GitHub requests, with no embedded credentials.
 
-Download [CopyCheckSetup.exe](CopyCheckSetup.exe), exit any running CopyCheck version, and run the installer. Approve the Windows permission prompt during setup. Select **Create a desktop shortcut** if wanted.
+Upgrades preserve the current user's startup and administrator preferences. Automatic checks and animation preferences are saved in LocalAppData/CopyCheck. Installation remains in Program Files/CopyCheck with an optional matching desktop shortcut and scheduled sign-in startup. Setup requires an administrator Windows account. The installer is unsigned.
 
-Requires Windows 10/11 x64 with .NET Framework 4.x. Install while signed into an administrator Windows account.
+## Publishing future versions
 
-## Features
+1. Increment matching versions in CopyCheck.cs (assembly versions and Updates.Current) and CopyCheck.iss (AppVersion and VersionInfoVersion).
+2. Run Build.ps1 with the Inno Setup compiler path. It builds the installer and generates release.json from that exact binary.
+3. Upload CopyCheckSetup.exe, release.json, and RELEASE_NOTES.md together to the main branch of aidenculpepper/copycheck. The included GitHub workflow creates a stable release named vX.Y.Z and attaches the installer. Never reuse a published version.
+4. Wait for the Publish CopyCheck release workflow to succeed. Existing Update 007 installers and apps will discover the newest published stable release. Changing source or unrelated files alone does not create an installable update.
 
-- Small animated copy confirmation.
-- Checkmark tray icon and dark settings.
-- Optional desktop shortcut with the matching icon.
-- Administrator mode enabled by setup.
-- Scheduled startup at sign-in without repeated administrator prompts.
+Update 006 cannot check for updates; install Update 007 once to enable future updating. In-app installs launch standard interactive Setup. Old installers may show their normal UAC prompt before checking for newer releases. Downloads remain in a uniquely named Windows temp folder for Windows to clean up; cancelling never closes the app.
 
-Left-click the tray icon for settings. Right-click for Settings or Exit. The startup and administrator settings can be changed in the app.
-
-The installer uses Windows Task Scheduler for elevated startup and leaves Windows UAC policy unchanged. It stores no passwords or clipboard history. Some applications do not expose usable selection coordinates and are skipped.
-
-## Uninstall
-
-Exit CopyCheck from its tray menu, then uninstall it through **Windows Settings → Apps → Installed apps → CopyCheck**. Uninstall removes the app, installed shortcuts, and its scheduled tasks. User preferences remain in LocalAppData\CopyCheck.
-
-## Version and verification
-
-Version 1.0.6. The installer is not code-signed.
-
-App and installer builds, task XML validation, preference checks, and icon checks passed. Full elevated installation, uninstall, and startup after sign-in still require testing.
+Validation: parser/version/digest/URL/size rejection checks, settings rendering, app and Inno builds. Full elevated installation, live upgrade, UAC cancellation, sign-in startup, and uninstall still need testing on a normal Windows desktop.
