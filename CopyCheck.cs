@@ -10,8 +10,8 @@ using System.Security.Principal;
 using System.Reflection;
 [assembly: AssemblyTitle("CopyCheck")]
 [assembly: AssemblyProduct("CopyCheck")]
-[assembly: AssemblyVersion("1.0.12.0")]
-[assembly: AssemblyFileVersion("1.0.12.0")]
+[assembly: AssemblyVersion("1.0.14.0")]
+[assembly: AssemblyFileVersion("1.0.14.0")]
 
 namespace CopyCheck {
 static class Program {
@@ -78,8 +78,8 @@ class CopyContext : ApplicationContext {
     IntPtr hook;
     uint sequence;
     IntPtr source;
-    DateTime pendingUntil;
-    bool enabled = true, pending, cDown;
+    readonly CopyFeedbackAttempt attempt = new CopyFeedbackAttempt();
+    bool enabled = true, cDown;
     Form settings;
     public CopyContext(bool showSettings, bool animationEnabled) {
         enabled = animationEnabled;
@@ -100,7 +100,7 @@ class CopyContext : ApplicationContext {
         menu.Items.Add("Exit", null, delegate { ExitThread(); });
         tray.ContextMenuStrip = menu;
         expiry.Interval = 100;
-        expiry.Tick += delegate { if (pending && DateTime.UtcNow > pendingUntil) pending = false; };
+        expiry.Tick += delegate { if(attempt.Active) ClipboardChanged(); };
         expiry.Start();
         tray.BalloonTipClicked += delegate { ShowSettings(); };
         updateTimer.Interval = 21600000;
@@ -128,8 +128,7 @@ class CopyContext : ApplicationContext {
                        && (Native.GetAsyncKeyState(0x12) & 0x8000) == 0) {
                         sequence = Native.GetClipboardSequenceNumber();
                         source = Native.GetForegroundWindow();
-                        pendingUntil = DateTime.UtcNow.AddMilliseconds(1500);
-                        pending = true;
+                        attempt.Begin(DateTime.UtcNow);
                     }
                 }
             }
@@ -159,20 +158,21 @@ class CopyContext : ApplicationContext {
         return null;
     }
     internal void ClipboardChanged() {
-        if(!enabled || !pending || DateTime.UtcNow > pendingUntil || Native.GetClipboardSequenceNumber() == sequence) return;
+        if(!enabled || !attempt.CanRetry(DateTime.UtcNow)) return;
+        if(Native.GetForegroundWindow() != source) { attempt.Cancel(); return; }
+        if(Native.GetClipboardSequenceNumber() == sequence) return;
         // Require a populated clipboard owned by the application that received Ctrl+C.
         uint sourcePid, ownerPid;
         Native.GetWindowThreadProcessId(source, out sourcePid);
         Native.GetWindowThreadProcessId(Native.GetClipboardOwner(), out ownerPid);
         if(sourcePid == 0 || sourcePid != ownerPid || Native.CountClipboardFormats() == 0) return;
-        pending = false;
-        var anchor = SelectionAnchor();
+        var anchor = attempt.TryComplete(DateTime.UtcNow,true,SelectionAnchor);
         if(anchor.HasValue) new CheckOverlay(anchor.Value).Show();
     }
     void ShowSettings() {
         if(settings != null && !settings.IsDisposed) { settings.Activate(); return; }
         settings = new SettingsForm(enabled);
-        ((SettingsForm)settings).AnimationChanged += delegate(bool value) { enabled = value; AppPreferences.Animation = value; pending = false; };
+        ((SettingsForm)settings).AnimationChanged += delegate(bool value) { enabled = value; AppPreferences.Animation = value; attempt.Cancel(); };
         ((SettingsForm)settings).AdministratorRestarted += delegate { ExitThread(); };
         var area = Screen.FromPoint(Cursor.Position).WorkingArea;
         settings.Location = new Point(area.Left+(area.Width-settings.Width)/2, area.Top+(area.Height-settings.Height)/2);
@@ -184,6 +184,25 @@ class CopyContext : ApplicationContext {
         expiry.Dispose(); tray.Visible = false; tray.ContextMenuStrip.Dispose(); tray.Dispose(); trayIcon.Dispose(); listener.Dispose();
         if(settings != null) settings.Dispose();
         base.ExitThreadCore();
+    }
+}
+sealed class CopyFeedbackAttempt {
+    public bool Active { get; private set; }
+    bool confirmed;
+    DateTime deadline;
+    public void Begin(DateTime now) { Active=true; confirmed=false; deadline=now.AddMilliseconds(1500); }
+    public void Cancel() { Active=false; }
+    public bool CanRetry(DateTime now) {
+        if(Active && now > deadline) Cancel();
+        return Active;
+    }
+    public Point? TryComplete(DateTime now,bool clipboardConfirmed,Func<Point?> findAnchor) {
+        if(!CanRetry(now) || !clipboardConfirmed) return null;
+        // Cold UI Automation providers can initially report no selected text bounds.
+        if(!confirmed) { confirmed=true; deadline=now.AddSeconds(2); }
+        var anchor=findAnchor();
+        if(anchor.HasValue) Cancel();
+        return anchor;
     }
 }
 static class Brand {
@@ -414,7 +433,7 @@ static class Updates {
             return false;
         } finally { Busy=false; Notify(); }
     }
-    public static readonly Version Current = new Version(1,0,12);
+    public static readonly Version Current = new Version(1,0,14);
     public const string Api = "https://api.github.com/repos/aidenculpepper/copycheck/releases/latest";
     public static ReleaseInfo Available;
     public static bool Busy;

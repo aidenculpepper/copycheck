@@ -1,6 +1,6 @@
-# CopyCheck Update 012 — Rounded settings
+# CopyCheck Update 014 — First copy retry
 
-Version 1.0.12. Windows 10/11 x64. Run CopyCheckSetup.exe to install. Fresh installs enable startup and administrator mode. Upgrades preserve existing preferences.
+Version 1.0.14. Windows 10/11 x64. Run CopyCheckSetup.exe to install. Fresh installs enable startup and administrator mode. Upgrades preserve existing preferences.
 
 ## Update settings
 
@@ -25,3 +25,6 @@ Increment matching assembly versions, Updates.Current, and the Inno versions. Ru
 Update 006 needs a one-time newer installation to gain updating. Versions 007–009 can install this version using their manual update button. Signed releases require the publisher's certificate/account; this build is unsigned and SmartScreen warnings remain possible. See SIGNING.md for optional certificate-store signing.
 
 Validation: 20 startup and automatic-install decision/argument checks, settings rendering, C# build, and Inno build passed. Full live sign-in, silent installation/relaunch, and uninstall require normal Windows desktop testing.
+
+First-copy fix: confirmed copies retry unavailable text bounds for up to two seconds. Clipboard readiness is retried every 100 ms within the copy window. Changed clipboard sequence, source ownership, and populated clipboard are still required. Leaving the source window cancels feedback. A reboot reproduction remains untested.
+Validation: 28 checks passed, including cold selection bounds, late clipboard rejection, duplicate events, bounded retries, cancellation/recovery, and existing startup/update regressions. App and Inno builds passed. Live reboot behavior remains untested.

@@ -1,1 +1,1 @@
-Rounded setting rows and action buttons, with smooth edges and hover, pressed, focus, and disabled button states. Existing update and startup behavior is preserved.
+Fix missed checkmark when the first successful copy arrives before clipboard data or text selection bounds are ready. Retry briefly without requiring another Ctrl+C. Keep clipboard success verification and cancel feedback when switching windows.
