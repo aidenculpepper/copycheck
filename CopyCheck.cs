@@ -10,8 +10,8 @@ using System.Security.Principal;
 using System.Reflection;
 [assembly: AssemblyTitle("CopyCheck")]
 [assembly: AssemblyProduct("CopyCheck")]
-[assembly: AssemblyVersion("1.0.8.0")]
-[assembly: AssemblyFileVersion("1.0.8.0")]
+[assembly: AssemblyVersion("1.0.9.0")]
+[assembly: AssemblyFileVersion("1.0.9.0")]
 
 namespace CopyCheck {
 static class Program {
@@ -83,6 +83,7 @@ class CopyContext : ApplicationContext {
     Form settings;
     public CopyContext(bool showSettings, bool animationEnabled) {
         enabled = animationEnabled;
+        if(ScheduledStartup.Installed && Elevation.IsAdministrator && ScheduledStartup.AtLogon) ScheduledStartup.Configure(AdminPreference.Enabled,Startup.IsEnabled);
         if(ScheduledStartup.Installed && Elevation.IsAdministrator && AdminPreference.Enabled) {
             // Complete a user-approved change from standard to elevated mode.
             if(!ScheduledStartup.Highest) ScheduledStartup.Configure(true,Startup.IsEnabled);
@@ -238,7 +239,7 @@ class SettingsForm : Form {
     public event Action AdministratorRestarted;
     readonly Icon icon;
     public SettingsForm(bool enabled) {
-        Text = "CopyCheck"; ClientSize = new Size(378,537); BackColor = Brand.Background; ForeColor = Brand.Text;
+        Text = "CopyCheck"; ClientSize = new Size(378,597); BackColor = Brand.Background; ForeColor = Brand.Text;
         Font = new Font("Segoe UI",10); FormBorderStyle = FormBorderStyle.FixedDialog; MaximizeBox = false; MinimizeBox = false;
         StartPosition = FormStartPosition.Manual; AutoScaleMode = AutoScaleMode.Dpi;
         icon = Brand.CreateIcon(); Icon = icon;
@@ -314,6 +315,17 @@ class SettingsForm : Form {
         };
         Updates.Changed += RefreshUpdates;
         FormClosed += delegate { Updates.Changed -= RefreshUpdates; };
+        var uninstall=UpdateButton("Uninstall CopyCheck",new Point(24,531),330);
+        uninstall.Enabled=ScheduledStartup.Installed && File.Exists(Path.Combine(Application.StartupPath,"unins000.exe"));
+        uninstall.Click += delegate {
+            try {
+                using(var process=Process.Start(new ProcessStartInfo { FileName=Path.Combine(Application.StartupPath,"unins000.exe"),WorkingDirectory=Application.StartupPath,UseShellExecute=true,Verb="runas" })) {
+                    if(process == null) throw new IOException("Windows did not start the uninstaller.");
+                }
+                if(AdministratorRestarted != null) AdministratorRestarted();
+            } catch(System.ComponentModel.Win32Exception ex) { if(ex.NativeErrorCode != 1223) MessageBox.Show(this,ex.Message,"CopyCheck",MessageBoxButtons.OK,MessageBoxIcon.Error); }
+            catch(Exception ex) { MessageBox.Show(this,ex.Message,"CopyCheck",MessageBoxButtons.OK,MessageBoxIcon.Error); }
+        };
         RefreshUpdates();
     }
     Button UpdateButton(string text,Point location,int width) {
@@ -349,7 +361,7 @@ sealed class ReleaseInfo {
     public long Size;
 }
 static class Updates {
-    public static readonly Version Current = new Version(1,0,8);
+    public static readonly Version Current = new Version(1,0,9);
     public const string Api = "https://api.github.com/repos/aidenculpepper/copycheck/releases/latest";
     public static ReleaseInfo Available;
     public static bool Busy;
@@ -491,9 +503,34 @@ static class Elevation {
         }
     }
 }
+static class VisibleStartup {
+    const string RunKey = @"Software\Microsoft\Windows\CurrentVersion\Run";
+    const string ApprovalKey = @"Software\Microsoft\Windows\CurrentVersion\Explorer\StartupApproved\Run";
+    public static bool Enabled { get {
+        using(var run=Microsoft.Win32.Registry.CurrentUser.OpenSubKey(RunKey)) {
+            if(run == null || run.GetValue("CopyCheck") == null) return ScheduledStartup.AtLogon;
+        }
+        using(var approval=Microsoft.Win32.Registry.CurrentUser.OpenSubKey(ApprovalKey)) {
+            var state=approval == null ? null : approval.GetValue("CopyCheck") as byte[];
+            return ApprovalEnabled(state);
+        }
+    } }
+    internal static bool ApprovalEnabled(byte[] state) { return state == null || state.Length == 0 || (state[0] & 1) == 0; }
+    internal static string Command(string executable) { return "\""+executable+"\" --scheduled"; }
+    public static void SetEnabled(bool value) {
+        using(var run=Microsoft.Win32.Registry.CurrentUser.CreateSubKey(RunKey)) {
+            if(value) run.SetValue("CopyCheck",Command(Application.ExecutablePath),Microsoft.Win32.RegistryValueKind.String);
+            else run.DeleteValue("CopyCheck",false);
+        }
+        using(var approval=Microsoft.Win32.Registry.CurrentUser.OpenSubKey(ApprovalKey,true)) {
+            if(approval != null) approval.DeleteValue("CopyCheck",false);
+        }
+    }
+    public static void Remove() { SetEnabled(false); }
+}
 static class Startup {
     static string Shortcut { get { return Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Startup),"CopyCheck.lnk"); } }
-    public static bool IsEnabled { get { return ScheduledStartup.Installed ? ScheduledStartup.AtLogon : File.Exists(Shortcut); } }
+    public static bool IsEnabled { get { return ScheduledStartup.Installed ? VisibleStartup.Enabled : File.Exists(Shortcut); } }
     public static void SetEnabled(bool value) {
         if(ScheduledStartup.Installed) { ScheduledStartup.Configure(AdminPreference.Enabled,value); RemoveLegacyShortcut(); return; }
         SetShortcut(value,Shortcut,Application.ExecutablePath);
@@ -581,8 +618,9 @@ static class ScheduledStartup {
         if(!Installed) throw new InvalidOperationException("CopyCheck must be installed in Program Files\\CopyCheck to configure scheduled startup.");
         using(var scope = new ComObjects()) {
             dynamic service = Connect(scope), folder = scope.Keep(service.GetFolder("\\"));
-            scope.Keep(folder.RegisterTask(Name,DefinitionXml(administrator,startup,Application.ExecutablePath,Sid),6,Sid,null,3,null));
+            scope.Keep(folder.RegisterTask(Name,DefinitionXml(administrator,false,Application.ExecutablePath,Sid),6,Sid,null,3,null));
         }
+        VisibleStartup.SetEnabled(startup);
     }
     public static void CheckInstallerAccount() {
         uint pid;
@@ -608,6 +646,8 @@ static class ScheduledStartup {
         } catch(COMException) { return false; } catch(IOException) { return false; } catch(UnauthorizedAccessException) { return false; }
     }
     public static void RemoveAllInstalledTasks() {
+        VisibleStartup.Remove();
+        Startup.RemoveLegacyShortcut();
         using(var scope = new ComObjects()) {
             dynamic service = Connect(scope), folder = scope.Keep(service.GetFolder("\\")), tasks = scope.Keep(folder.GetTasks(1));
             var names = new System.Collections.Generic.List<string>();

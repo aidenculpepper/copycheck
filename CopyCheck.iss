@@ -1,7 +1,7 @@
 [Setup]
 AppId={{B26608E9-B9A1-40C6-974F-C356D0B16CE9}
 AppName=CopyCheck
-AppVersion=1.0.8
+AppVersion=1.0.9
 AppPublisher=CopyCheck
 DefaultDirName={autopf}\CopyCheck
 DisableDirPage=yes
@@ -22,7 +22,7 @@ CloseApplications=yes
 RestartApplications=no
 AppMutex=Local\CopyCheck.Foundation
 UninstallDisplayName=CopyCheck
-VersionInfoVersion=1.0.8.0
+VersionInfoVersion=1.0.9.0
 
 [Tasks]
 Name: "desktopicon"; Description: "Create a &desktop shortcut"; GroupDescription: "Shortcuts:"; Flags: unchecked
@@ -52,7 +52,7 @@ begin
     exit;
   end;
   if ResultCode = 1 then
-    Result := MsgBox('Install the bundled CopyCheck 1.0.8 version instead? It may not be the latest version.', mbConfirmation, MB_YESNO) = IDYES
+    Result := MsgBox('Install the bundled CopyCheck 1.0.9 version instead? It may not be the latest version.', mbConfirmation, MB_YESNO) = IDYES
   else Result := ResultCode = 0;
 end;
 

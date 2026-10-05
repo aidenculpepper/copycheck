@@ -1,3 +1,1 @@
-Fix setup failing with 0x80070002 when no CopyCheck startup task exists. Handle the .NET FileNotFoundException emitted by Task Scheduler COM interop. Preserve upgrade preferences and report the actual setup stage on other errors.
-
-Includes optional timestamped code-signing support in Build.ps1. This release is unsigned; Windows SmartScreen may still show "Windows protected your PC". Trusted signing requires the publisher's certificate or signing-service account; signing alone does not guarantee immediate SmartScreen reputation.
+Add an Uninstall CopyCheck button below update controls. Register startup through Windows HKCU Run so it appears in Task Manager Startup apps. Enable startup on fresh installs, preserve upgrade preferences and Task Manager disabled state, and retain on-demand elevated launch without repeated sign-in UAC prompts. Remove startup entries during uninstall. Windows 10/11 x64; unsigned installer.
