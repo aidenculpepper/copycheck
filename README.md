@@ -1,6 +1,6 @@
-# CopyCheck Update 018 — Settings header
+# CopyCheck Update 019 — Matching section headers
 
-Version 1.0.18. Windows 10/11 x64. Run CopyCheckSetup.exe to install. Fresh installs enable startup and administrator mode. Upgrades preserve existing preferences.
+Version 1.0.19. Windows 10/11 x64. Run CopyCheckSetup.exe to install. Fresh installs enable startup and administrator mode. Upgrades preserve existing preferences.
 
 ## Update settings
 
@@ -39,3 +39,5 @@ Preference saves now atomically replace a temporary file, retrying transient sha
 Validation: 46 checks passed, including saves with compatible readers, released external locks, persistent locks preserving previous data, and temporary-file cleanup. App/Inno builds passed. Full elevated installation remains untested.
 
 CopyCheck is now the main heading above a smaller Settings label.
+
+Updates now matches the smaller muted Settings header.

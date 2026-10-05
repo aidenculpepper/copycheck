@@ -1,1 +1,1 @@
-Add CopyCheck as the main heading in the settings window, with a smaller Settings label beneath it.
+Match the Updates section heading to the Settings heading with the same font size, weight, and muted color.

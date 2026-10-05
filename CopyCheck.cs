@@ -10,8 +10,8 @@ using System.Security.Principal;
 using System.Reflection;
 [assembly: AssemblyTitle("CopyCheck")]
 [assembly: AssemblyProduct("CopyCheck")]
-[assembly: AssemblyVersion("1.0.18.0")]
-[assembly: AssemblyFileVersion("1.0.18.0")]
+[assembly: AssemblyVersion("1.0.19.0")]
+[assembly: AssemblyFileVersion("1.0.19.0")]
 
 namespace CopyCheck {
 static class Program {
@@ -405,7 +405,7 @@ class SettingsForm : Form {
     UpdateStatusLabel updateStatus;
     Button checkUpdates, installUpdate;
     void AddUpdateControls() {
-        Controls.Add(new Label { Text="Updates",AutoSize=true,Font=new Font("Segoe UI Semibold",12),Location=new Point(24,284),ForeColor=Brand.Text });
+        Controls.Add(new Label { Text="Updates",AutoSize=true,Font=new Font("Segoe UI",10),Location=new Point(24,284),ForeColor=Color.FromArgb(155,168,183) });
         Controls.Add(new Label { Text="Installed version "+Updates.Current,AutoSize=true,Location=new Point(24,589),ForeColor=Color.FromArgb(155,168,183),Font=new Font("Segoe UI",9) });
         var automatic=new Toggle { Text="Check automatically",Checked=AppPreferences.AutomaticUpdates,Location=new Point(24,319) };
         automatic.CheckedChanged += delegate {
@@ -505,7 +505,7 @@ static class Updates {
             return false;
         } finally { Busy=false; Notify(); }
     }
-    public static readonly Version Current = new Version(1,0,18);
+    public static readonly Version Current = new Version(1,0,19);
     public const string Api = "https://api.github.com/repos/aidenculpepper/copycheck/releases/latest";
     public static ReleaseInfo Available;
     public static bool Busy;
