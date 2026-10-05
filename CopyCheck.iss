@@ -1,7 +1,7 @@
 [Setup]
 AppId={{B26608E9-B9A1-40C6-974F-C356D0B16CE9}
 AppName=CopyCheck
-AppVersion=1.0.9
+AppVersion=1.0.10
 AppPublisher=CopyCheck
 DefaultDirName={autopf}\CopyCheck
 DisableDirPage=yes
@@ -22,7 +22,7 @@ CloseApplications=yes
 RestartApplications=no
 AppMutex=Local\CopyCheck.Foundation
 UninstallDisplayName=CopyCheck
-VersionInfoVersion=1.0.9.0
+VersionInfoVersion=1.0.10.0
 
 [Tasks]
 Name: "desktopicon"; Description: "Create a &desktop shortcut"; GroupDescription: "Shortcuts:"; Flags: unchecked
@@ -40,19 +40,36 @@ Name: "{commondesktop}\CopyCheck"; Filename: "{app}\CopyCheck.exe"; IconFilename
 [Run]
 Filename: "{app}\CopyCheck.exe"; Description: "Launch CopyCheck"; Flags: nowait postinstall skipifsilent runasoriginaluser
 
+Filename: "{app}\CopyCheck.exe"; Flags: nowait runasoriginaluser; Check: AutoUpdate
+
 [Code]
+function AutoUpdate(): Boolean;
+begin
+  Result := ExpandConstant('{param:COPYCHECKAUTO|0}') = '1';
+end;
+
+function BootstrapArguments(): String;
+begin
+  Result := '--install-latest';
+  if AutoUpdate() then Result := Result + ' --silent-update';
+end;
+
 function InitializeSetup(): Boolean;
 var
   ResultCode: Integer;
 begin
   ExtractTemporaryFile('CopyCheck.exe');
-  if not Exec(ExpandConstant('{tmp}\CopyCheck.exe'), '--install-latest', ExpandConstant('{tmp}'), SW_HIDE, ewWaitUntilTerminated, ResultCode) then begin
+  if not Exec(ExpandConstant('{tmp}\CopyCheck.exe'), BootstrapArguments(), ExpandConstant('{tmp}'), SW_HIDE, ewWaitUntilTerminated, ResultCode) then begin
     MsgBox('Could not check GitHub for the latest installer.', mbError, MB_OK);
     Result := False;
     exit;
   end;
+  if (ResultCode = 1) and AutoUpdate() then begin
+    Result := False;
+    exit;
+  end;
   if ResultCode = 1 then
-    Result := MsgBox('Install the bundled CopyCheck 1.0.9 version instead? It may not be the latest version.', mbConfirmation, MB_YESNO) = IDYES
+    Result := MsgBox('Install the bundled CopyCheck 1.0.10 version instead? It may not be the latest version.', mbConfirmation, MB_YESNO) = IDYES
   else Result := ResultCode = 0;
 end;
 

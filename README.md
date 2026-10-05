@@ -1,23 +1,27 @@
-# CopyCheck Update 009 — Updates
+# CopyCheck Update 010 — Automatic installs
 
-Version 1.0.9. Windows 10/11 x64. Run CopyCheckSetup.exe to install. Setup checks the latest public GitHub Release first: if a newer installer exists, it downloads, verifies, and launches it. If the check fails, setup asks explicitly before installing the bundled version.
+Version 1.0.10. Windows 10/11 x64. Run CopyCheckSetup.exe to install. Fresh installs enable startup and administrator mode. Upgrades preserve existing preferences.
 
-Settings includes Check for updates, an automatic-check toggle (on by default), installed version/status, and Install update when a newer release is found. Automatic checks run at launch and every six hours; installation always requires a click. Downloads must match the GitHub release asset size and SHA-256 digest. Drafts, prereleases, downgrades, foreign installer URLs, incomplete downloads, and invalid checksums are rejected. Checks use anonymous public GitHub requests, with no embedded credentials.
+## Update settings
 
-Upgrades preserve the current user's startup and administrator preferences. Automatic checks and animation preferences are saved in LocalAppData/CopyCheck. Installation remains in Program Files/CopyCheck with an optional matching desktop shortcut and scheduled sign-in startup. Setup requires an administrator Windows account. The installer is unsigned.
+- Check automatically: on by default; checks public GitHub Releases on launch and every six hours.
+- Install automatically: OFF by default; enabled only while automatic checks are on. When opted in, newer stable releases are downloaded and verified, then installed with silent Setup and CopyCheck relaunched after success.
+- Check for updates and Install update: manual checking and interactive installation remain available.
+- Turning off automatic installation during download prevents Setup from launching.
+- Check/download errors and cancelled UAC prompts leave the app running. A setup failure after launch may require opening CopyCheck again.
 
-## Publishing future versions
+Windows may still request administrator approval when the app is running without elevation. Silent update mode suppresses normal wizard screens and does not reboot Windows. Full elevated silent install/relaunch is not tested in this restricted session.
 
-1. Increment matching versions in CopyCheck.cs (assembly versions and Updates.Current) and CopyCheck.iss (AppVersion and VersionInfoVersion).
-2. Run Build.ps1 with the Inno Setup compiler path. It builds the installer and generates release.json from that exact binary.
-3. Upload CopyCheckSetup.exe, release.json, and RELEASE_NOTES.md together to the main branch of aidenculpepper/copycheck. The included GitHub workflow creates a stable release named vX.Y.Z and attaches the installer. Never reuse a published version.
-4. Wait for the Publish CopyCheck release workflow to succeed. Existing Update 009 installers and apps will discover the newest published stable release. Changing source or unrelated files alone does not create an installable update.
+## Installation and removal
 
-Update 006 cannot check for updates; install Update 009 once to enable future updating. In-app installs launch standard interactive Setup. Old installers may show their normal UAC prompt before checking for newer releases. Downloads remain in a uniquely named Windows temp folder for Windows to clean up; cancelling never closes the app.
+Installs into Program Files/CopyCheck, with optional matching desktop shortcut. Uses a visible HKCU Run entry for Task Manager Startup apps and an on-demand highest-privilege per-user task for administrator mode. The startup toggle and Task Manager disabled state are preserved on upgrade. Uninstall CopyCheck opens the normal uninstaller; it is available only for the installed app.
 
-Validation: parser/version/digest/URL/size rejection checks, settings rendering, app and Inno builds. Full elevated installation, live upgrade, UAC cancellation, sign-in startup, and uninstall still need testing on a normal Windows desktop.
+The installer checks GitHub for a newer installer before installing. If that check fails, interactive Setup explicitly asks before installing its bundled version. Downloaded installers must match the release asset's size and SHA-256 digest and exact repository release URL. No embedded GitHub credentials. Draft/prerelease versions and downgrades are rejected.
 
-Update 009 fixes the missing-startup-task 0x80070002 error. Eight startup regression checks passed, including the exact .NET exception and permission errors. Optional trusted certificate signing is documented in SIGNING.md. This build remains unsigned; SmartScreen warnings are not resolved without trusted publisher signing/reputation. Full elevated installation still requires testing outside this restricted session.
+## Publishing
 
+Increment matching assembly versions, Updates.Current, and the Inno versions. Run Build.ps1, then commit CopyCheckSetup.exe, generated release.json, and RELEASE_NOTES.md together to main in aidenculpepper/copycheck. The existing publish-release.yml workflow creates a new stable GitHub release. Never reuse a published version. The website's latest-release download link follows new releases automatically.
 
-Update 009: adds Uninstall CopyCheck below update controls (available in installed mode). Opens the standard Inno uninstaller and exits the tray app after launch. Startup now uses HKCU Run so CopyCheck appears in Task Manager Startup apps; the per-user highest-privilege task runs on demand rather than separately at sign-in. Fresh installs enable startup. Upgrades preserve the existing startup preference, including disabled state in Task Manager. The settings toggle enables/disables the visible entry. Uninstall removes the current user startup entry, its StartupApproved state, legacy shortcut, and managed scheduler tasks. 13 startup regression checks passed; full elevated sign-in/uninstall still needs normal desktop testing.
+Update 006 needs a one-time newer installation to gain updating. Versions 007–009 can install this version using their manual update button. Signed releases require the publisher's certificate/account; this build is unsigned and SmartScreen warnings remain possible. See SIGNING.md for optional certificate-store signing.
+
+Validation: 20 startup and automatic-install decision/argument checks, settings rendering, C# build, and Inno build passed. Full live sign-in, silent installation/relaunch, and uninstall require normal Windows desktop testing.

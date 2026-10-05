@@ -10,13 +10,13 @@ using System.Security.Principal;
 using System.Reflection;
 [assembly: AssemblyTitle("CopyCheck")]
 [assembly: AssemblyProduct("CopyCheck")]
-[assembly: AssemblyVersion("1.0.9.0")]
-[assembly: AssemblyFileVersion("1.0.9.0")]
+[assembly: AssemblyVersion("1.0.10.0")]
+[assembly: AssemblyFileVersion("1.0.10.0")]
 
 namespace CopyCheck {
 static class Program {
     [STAThread] static int Main(string[] args) {
-        if(Array.IndexOf(args,"--install-latest") >= 0) return Updates.Bootstrap();
+        if(Array.IndexOf(args,"--install-latest") >= 0) return Updates.Bootstrap(Array.IndexOf(args,"--silent-update") >= 0);
         Native.SetProcessDPIAware();
         Application.EnableVisualStyles();
         Application.SetCompatibleTextRenderingDefault(false);
@@ -111,6 +111,9 @@ class CopyContext : ApplicationContext {
     }
     async System.Threading.Tasks.Task CheckForUpdates() {
         await Updates.CheckAsync();
+        if(!exiting && Updates.ShouldInstallAutomatically(AppPreferences.AutomaticUpdates,AppPreferences.AutomaticInstall,Updates.Available,Updates.Busy)) {
+            if(await Updates.InstallAsync(true)) { ExitThread(); return; }
+        }
         if(!exiting && Updates.Available != null) { tray.BalloonTipTitle = "CopyCheck update available"; tray.BalloonTipText = "Version "+Updates.Available.Version+" is ready. Open Settings to install."; tray.ShowBalloonTip(6000); }
     }
     IntPtr OnKey(int code, IntPtr w, IntPtr l) {
@@ -239,7 +242,7 @@ class SettingsForm : Form {
     public event Action AdministratorRestarted;
     readonly Icon icon;
     public SettingsForm(bool enabled) {
-        Text = "CopyCheck"; ClientSize = new Size(378,597); BackColor = Brand.Background; ForeColor = Brand.Text;
+        Text = "CopyCheck"; ClientSize = new Size(378,661); BackColor = Brand.Background; ForeColor = Brand.Text;
         Font = new Font("Segoe UI",10); FormBorderStyle = FormBorderStyle.FixedDialog; MaximizeBox = false; MinimizeBox = false;
         StartPosition = FormStartPosition.Manual; AutoScaleMode = AutoScaleMode.Dpi;
         icon = Brand.CreateIcon(); Icon = icon;
@@ -294,10 +297,18 @@ class SettingsForm : Form {
             catch(Exception ex) { MessageBox.Show(this,ex.Message,"CopyCheck",MessageBoxButtons.OK,MessageBoxIcon.Error); }
         };
         Controls.Add(automatic);
-        updateStatus=new Label { Location=new Point(24,405),Size=new Size(330,48),ForeColor=Color.FromArgb(155,168,183),Font=new Font("Segoe UI",9) };
+        var autoInstall=new Toggle { Text="Install automatically",Checked=AppPreferences.AutomaticInstall,Location=new Point(24,407) };
+        autoInstall.Enabled=automatic.Checked;
+        automatic.CheckedChanged += delegate { autoInstall.Enabled=AppPreferences.AutomaticUpdates; };
+        autoInstall.CheckedChanged += delegate {
+            try { AppPreferences.AutomaticInstall=autoInstall.Checked; }
+            catch(Exception ex) { MessageBox.Show(this,ex.Message,"CopyCheck",MessageBoxButtons.OK,MessageBoxIcon.Error); }
+        };
+        Controls.Add(autoInstall);
+        updateStatus=new Label { Location=new Point(24,469),Size=new Size(330,48),ForeColor=Color.FromArgb(155,168,183),Font=new Font("Segoe UI",9) };
         Controls.Add(updateStatus);
-        checkUpdates=UpdateButton("Check for updates",new Point(24,465),158);
-        installUpdate=UpdateButton("Install update",new Point(196,465),158);
+        checkUpdates=UpdateButton("Check for updates",new Point(24,529),158);
+        installUpdate=UpdateButton("Install update",new Point(196,529),158);
         checkUpdates.Click += async delegate { await Updates.CheckAsync(); };
         installUpdate.Click += async delegate {
             if(Updates.Busy || Updates.Available == null) return;
@@ -315,7 +326,7 @@ class SettingsForm : Form {
         };
         Updates.Changed += RefreshUpdates;
         FormClosed += delegate { Updates.Changed -= RefreshUpdates; };
-        var uninstall=UpdateButton("Uninstall CopyCheck",new Point(24,531),330);
+        var uninstall=UpdateButton("Uninstall CopyCheck",new Point(24,595),330);
         uninstall.Enabled=ScheduledStartup.Installed && File.Exists(Path.Combine(Application.StartupPath,"unins000.exe"));
         uninstall.Click += delegate {
             try {
@@ -353,6 +364,7 @@ class SettingsForm : Form {
 static class AppPreferences {
     static string FileFor(string name) { return Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),"CopyCheck",name+".txt"); }
     public static bool AutomaticUpdates { get { return AdminPreference.ReadValue(FileFor("automatic-updates"),true); } set { AdminPreference.Write(FileFor("automatic-updates"),value); } }
+    public static bool AutomaticInstall { get { return AdminPreference.ReadValue(FileFor("automatic-install"),false); } set { AdminPreference.Write(FileFor("automatic-install"),value); } }
     public static bool Animation { get { return AdminPreference.ReadValue(FileFor("animation"),true); } set { AdminPreference.Write(FileFor("animation"),value); } }
 }
 sealed class ReleaseInfo {
@@ -361,7 +373,22 @@ sealed class ReleaseInfo {
     public long Size;
 }
 static class Updates {
-    public static readonly Version Current = new Version(1,0,9);
+    internal static bool ShouldInstallAutomatically(bool checks,bool installs,ReleaseInfo release,bool busy) { return checks && installs && release != null && !busy; }
+    public static async System.Threading.Tasks.Task<bool> InstallAsync(bool silent) {
+        if(Busy || Available == null) return false;
+        var release=Available;
+        Busy=true; Status="Downloading and verifying the installer..."; Notify();
+        try {
+            string file=await System.Threading.Tasks.Task.Run(()=>Download(release));
+            if(silent && (!AppPreferences.AutomaticUpdates || !AppPreferences.AutomaticInstall)) { Status="Automatic installation cancelled."; return false; }
+            LaunchInstaller(file,silent); return true;
+        } catch(Exception ex) {
+            var native=ex as System.ComponentModel.Win32Exception;
+            Status=native != null && native.NativeErrorCode == 1223 ? "Installation cancelled. You can try again." : ex.Message;
+            return false;
+        } finally { Busy=false; Notify(); }
+    }
+    public static readonly Version Current = new Version(1,0,10);
     public const string Api = "https://api.github.com/repos/aidenculpepper/copycheck/releases/latest";
     public static ReleaseInfo Available;
     public static bool Busy;
@@ -452,18 +479,19 @@ static class Updates {
             return file;
         } catch { if(File.Exists(file)) File.Delete(file); Directory.Delete(directory); throw; }
     }
-    public static void LaunchInstaller(string file) {
-        using(var process=Process.Start(new ProcessStartInfo { FileName=file,UseShellExecute=true,Verb="runas",Arguments="/COPYCHECKUPDATE=1",WorkingDirectory=Path.GetDirectoryName(file) })) {
+    internal static string InstallerArguments(bool silent) { return silent ? "/COPYCHECKUPDATE=1 /COPYCHECKAUTO=1 /VERYSILENT /SUPPRESSMSGBOXES /NORESTART" : "/COPYCHECKUPDATE=1"; }
+    public static void LaunchInstaller(string file,bool silent=false) {
+        using(var process=Process.Start(new ProcessStartInfo { FileName=file,UseShellExecute=true,Verb="runas",Arguments=InstallerArguments(silent),WorkingDirectory=Path.GetDirectoryName(file) })) {
             if(process == null) throw new IOException("Windows did not start the installer.");
         }
     }
-    public static int Bootstrap() {
+    public static int Bootstrap(bool silent=false) {
         try {
             ReleaseInfo release=Fetch();
             if(release == null) return 0;
-            LaunchInstaller(Download(release)); return 2;
+            LaunchInstaller(Download(release),silent); return 2;
         } catch(Exception ex) {
-            MessageBox.Show("Could not check or download the latest CopyCheck installer.\n"+ex.Message,"CopyCheck installer",MessageBoxButtons.OK,MessageBoxIcon.Warning);
+            if(!silent) MessageBox.Show("Could not check or download the latest CopyCheck installer.\n"+ex.Message,"CopyCheck installer",MessageBoxButtons.OK,MessageBoxIcon.Warning);
             return 1;
         }
     }
