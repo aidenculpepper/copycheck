@@ -10,8 +10,8 @@ using System.Security.Principal;
 using System.Reflection;
 [assembly: AssemblyTitle("CopyCheck")]
 [assembly: AssemblyProduct("CopyCheck")]
-[assembly: AssemblyVersion("1.0.11.0")]
-[assembly: AssemblyFileVersion("1.0.11.0")]
+[assembly: AssemblyVersion("1.0.12.0")]
+[assembly: AssemblyFileVersion("1.0.12.0")]
 
 namespace CopyCheck {
 static class Program {
@@ -218,6 +218,31 @@ class DarkMenuRenderer : ToolStripProfessionalRenderer {
     }
     protected override void OnRenderToolStripBorder(ToolStripRenderEventArgs e) { }
 }
+static class RoundedSurface {
+    public static System.Drawing.Drawing2D.GraphicsPath Path(RectangleF bounds,float radius) {
+        var path=new System.Drawing.Drawing2D.GraphicsPath(); float diameter=radius*2;
+        path.AddArc(bounds.X,bounds.Y,diameter,diameter,180,90);
+        path.AddArc(bounds.Right-diameter,bounds.Y,diameter,diameter,270,90);
+        path.AddArc(bounds.Right-diameter,bounds.Bottom-diameter,diameter,diameter,0,90);
+        path.AddArc(bounds.X,bounds.Bottom-diameter,diameter,diameter,90,90); path.CloseFigure(); return path;
+    }
+}
+class RoundedButton : Button {
+    bool hovered,pressed;
+    public RoundedButton() { SetStyle(ControlStyles.UserPaint | ControlStyles.AllPaintingInWmPaint | ControlStyles.OptimizedDoubleBuffer,true); }
+    protected override void OnMouseEnter(EventArgs e) { hovered=true; base.OnMouseEnter(e); Invalidate(); }
+    protected override void OnMouseLeave(EventArgs e) { hovered=false; pressed=false; base.OnMouseLeave(e); Invalidate(); }
+    protected override void OnMouseDown(MouseEventArgs e) { pressed=e.Button==MouseButtons.Left; base.OnMouseDown(e); Invalidate(); }
+    protected override void OnMouseUp(MouseEventArgs e) { pressed=false; base.OnMouseUp(e); Invalidate(); }
+    protected override void OnPaint(PaintEventArgs e) {
+        var g=e.Graphics; g.Clear(Parent==null ? Brand.Background : Parent.BackColor); g.SmoothingMode=System.Drawing.Drawing2D.SmoothingMode.AntiAlias;
+        using(var path=RoundedSurface.Path(new RectangleF(.5f,.5f,Width-1,Height-1),9)) {
+            using(var brush=new SolidBrush(Enabled && hovered ? Color.FromArgb(pressed ? 39 : 49,pressed ? 49 : 60,pressed ? 60 : 73) : BackColor)) g.FillPath(brush,path);
+            using(var pen=new Pen(Focused && ShowFocusCues ? Brand.Accent : Color.FromArgb(65,76,89))) g.DrawPath(pen,path);
+        }
+        TextRenderer.DrawText(g,Text,Font,ClientRectangle,Enabled ? ForeColor : Color.FromArgb(110,121,134),TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter);
+    }
+}
 class Toggle : CheckBox {
     public Toggle() {
         AutoSize = false; Size = new Size(330,52); ForeColor = Brand.Text; BackColor = Brand.Surface;
@@ -227,7 +252,8 @@ class Toggle : CheckBox {
     }
     protected override void OnCheckedChanged(EventArgs e) { base.OnCheckedChanged(e); Invalidate(); }
     protected override void OnPaint(PaintEventArgs e) {
-        var g = e.Graphics; g.Clear(BackColor); g.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.AntiAlias;
+        var g = e.Graphics; g.Clear(Parent==null ? Brand.Background : Parent.BackColor); g.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.AntiAlias;
+        using(var path=RoundedSurface.Path(new RectangleF(0,0,Width,Height),10)) using(var brush=new SolidBrush(BackColor)) g.FillPath(brush,path);
         TextRenderer.DrawText(g,Text,Font,new Rectangle(16,0,Width-84,Height),ForeColor,TextFormatFlags.Left | TextFormatFlags.VerticalCenter);
         int x = Width-60, y = (Height-22)/2;
         using(var brush = new SolidBrush(Checked ? Brand.Accent : Color.FromArgb(72,81,94))) {
@@ -340,7 +366,7 @@ class SettingsForm : Form {
         RefreshUpdates();
     }
     Button UpdateButton(string text,Point location,int width) {
-        var button=new Button { Text=text,Location=location,Size=new Size(width,38),FlatStyle=FlatStyle.Flat,BackColor=Brand.Surface,ForeColor=Brand.Text,Cursor=Cursors.Hand };
+        var button=new RoundedButton { Text=text,Location=location,Size=new Size(width,38),FlatStyle=FlatStyle.Flat,BackColor=Brand.Surface,ForeColor=Brand.Text,Cursor=Cursors.Hand };
         button.FlatAppearance.BorderColor=Color.FromArgb(65,76,89);
         Controls.Add(button); return button;
     }
@@ -388,7 +414,7 @@ static class Updates {
             return false;
         } finally { Busy=false; Notify(); }
     }
-    public static readonly Version Current = new Version(1,0,11);
+    public static readonly Version Current = new Version(1,0,12);
     public const string Api = "https://api.github.com/repos/aidenculpepper/copycheck/releases/latest";
     public static ReleaseInfo Available;
     public static bool Busy;

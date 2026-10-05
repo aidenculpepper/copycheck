@@ -1,6 +1,6 @@
-# CopyCheck Update 011 — Silent manual updates
+# CopyCheck Update 012 — Rounded settings
 
-Version 1.0.11. Windows 10/11 x64. Run CopyCheckSetup.exe to install. Fresh installs enable startup and administrator mode. Upgrades preserve existing preferences.
+Version 1.0.12. Windows 10/11 x64. Run CopyCheckSetup.exe to install. Fresh installs enable startup and administrator mode. Upgrades preserve existing preferences.
 
 ## Update settings
 

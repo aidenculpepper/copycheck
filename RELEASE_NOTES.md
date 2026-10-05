@@ -1,1 +1,1 @@
-Manual Install update now uses silent Setup and relaunches CopyCheck after a successful installation. Automatic installation remains optional. Windows administrator approval and SmartScreen warnings may still appear.
+Rounded setting rows and action buttons, with smooth edges and hover, pressed, focus, and disabled button states. Existing update and startup behavior is preserved.
