@@ -10,8 +10,8 @@ using System.Security.Principal;
 using System.Reflection;
 [assembly: AssemblyTitle("CopyCheck")]
 [assembly: AssemblyProduct("CopyCheck")]
-[assembly: AssemblyVersion("1.0.14.0")]
-[assembly: AssemblyFileVersion("1.0.14.0")]
+[assembly: AssemblyVersion("1.0.15.0")]
+[assembly: AssemblyFileVersion("1.0.15.0")]
 
 namespace CopyCheck {
 static class Program {
@@ -248,6 +248,7 @@ static class RoundedSurface {
 }
 class RoundedButton : Button {
     bool hovered,pressed;
+    public bool Danger { get; set; }
     public RoundedButton() { SetStyle(ControlStyles.UserPaint | ControlStyles.AllPaintingInWmPaint | ControlStyles.OptimizedDoubleBuffer,true); }
     protected override void OnMouseEnter(EventArgs e) { hovered=true; base.OnMouseEnter(e); Invalidate(); }
     protected override void OnMouseLeave(EventArgs e) { hovered=false; pressed=false; base.OnMouseLeave(e); Invalidate(); }
@@ -256,10 +257,10 @@ class RoundedButton : Button {
     protected override void OnPaint(PaintEventArgs e) {
         var g=e.Graphics; g.Clear(Parent==null ? Brand.Background : Parent.BackColor); g.SmoothingMode=System.Drawing.Drawing2D.SmoothingMode.AntiAlias;
         using(var path=RoundedSurface.Path(new RectangleF(.5f,.5f,Width-1,Height-1),9)) {
-            using(var brush=new SolidBrush(Enabled && hovered ? Color.FromArgb(pressed ? 39 : 49,pressed ? 49 : 60,pressed ? 60 : 73) : BackColor)) g.FillPath(brush,path);
-            using(var pen=new Pen(Focused && ShowFocusCues ? Brand.Accent : Color.FromArgb(65,76,89))) g.DrawPath(pen,path);
+            using(var brush=new SolidBrush(Enabled && hovered ? (Danger ? Color.FromArgb(pressed ? 57 : 67,pressed ? 33 : 38,pressed ? 40 : 47) : Color.FromArgb(pressed ? 39 : 49,pressed ? 49 : 60,pressed ? 60 : 73)) : BackColor)) g.FillPath(brush,path);
+            using(var pen=new Pen(Focused && ShowFocusCues ? Brand.Accent : FlatAppearance.BorderColor)) g.DrawPath(pen,path);
         }
-        TextRenderer.DrawText(g,Text,Font,ClientRectangle,Enabled ? ForeColor : Color.FromArgb(110,121,134),TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter);
+        TextRenderer.DrawText(g,Text,Font,ClientRectangle,Enabled ? ForeColor : (Danger ? Color.FromArgb(137,94,104) : Color.FromArgb(110,121,134)),TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter);
     }
 }
 class Toggle : CheckBox {
@@ -282,12 +283,33 @@ class Toggle : CheckBox {
         if(Focused && ShowFocusCues) ControlPaint.DrawFocusRectangle(g,new Rectangle(5,5,Width-10,Height-10),ForeColor,BackColor);
     }
 }
+class UpdateStatusLabel : Label {
+    bool showCheckmark;
+    public UpdateStatusLabel() { SetStyle(ControlStyles.UserPaint | ControlStyles.AllPaintingInWmPaint | ControlStyles.OptimizedDoubleBuffer,true); }
+    public void SetStatus(string text,bool current,bool outdated) {
+        Text=text; showCheckmark=current;
+        ForeColor=current ? Brand.Accent : outdated ? Color.FromArgb(201,127,139) : Color.FromArgb(155,168,183);
+        Invalidate();
+    }
+    protected override void OnPaint(PaintEventArgs e) {
+        e.Graphics.Clear(BackColor);
+        int left=showCheckmark ? 20 : 0;
+        if(showCheckmark) {
+            e.Graphics.SmoothingMode=System.Drawing.Drawing2D.SmoothingMode.AntiAlias;
+            using(var pen=new Pen(ForeColor,1.8f)) {
+                pen.StartCap=pen.EndCap=System.Drawing.Drawing2D.LineCap.Round;
+                e.Graphics.DrawLines(pen,new PointF[] { new PointF(2,8),new PointF(6,12),new PointF(13,4) });
+            }
+        }
+        TextRenderer.DrawText(e.Graphics,Text,Font,new Rectangle(left,0,Width-left,Height),ForeColor,TextFormatFlags.Left | TextFormatFlags.Top | TextFormatFlags.WordBreak);
+    }
+}
 class SettingsForm : Form {
     public event Action<bool> AnimationChanged;
     public event Action AdministratorRestarted;
     readonly Icon icon;
     public SettingsForm(bool enabled) {
-        Text = "CopyCheck"; ClientSize = new Size(378,661); BackColor = Brand.Background; ForeColor = Brand.Text;
+        Text = "CopyCheck"; ClientSize = new Size(378,623); BackColor = Brand.Background; ForeColor = Brand.Text;
         Font = new Font("Segoe UI",10); FormBorderStyle = FormBorderStyle.FixedDialog; MaximizeBox = false; MinimizeBox = false;
         StartPosition = FormStartPosition.Manual; AutoScaleMode = AutoScaleMode.Dpi;
         icon = Brand.CreateIcon(); Icon = icon;
@@ -331,18 +353,18 @@ class SettingsForm : Form {
         AddUpdateControls();
     }
 
-    Label updateStatus;
+    UpdateStatusLabel updateStatus;
     Button checkUpdates, installUpdate;
     void AddUpdateControls() {
         Controls.Add(new Label { Text="Updates",AutoSize=true,Font=new Font("Segoe UI Semibold",12),Location=new Point(24,284),ForeColor=Brand.Text });
-        Controls.Add(new Label { Text="Installed version "+Updates.Current,AutoSize=true,Location=new Point(24,313),ForeColor=Color.FromArgb(155,168,183),Font=new Font("Segoe UI",9) });
-        var automatic=new Toggle { Text="Check automatically",Checked=AppPreferences.AutomaticUpdates,Location=new Point(24,343) };
+        Controls.Add(new Label { Text="Installed version "+Updates.Current,AutoSize=true,Location=new Point(24,589),ForeColor=Color.FromArgb(155,168,183),Font=new Font("Segoe UI",9) });
+        var automatic=new Toggle { Text="Check automatically",Checked=AppPreferences.AutomaticUpdates,Location=new Point(24,319) };
         automatic.CheckedChanged += delegate {
             try { AppPreferences.AutomaticUpdates=automatic.Checked; }
             catch(Exception ex) { MessageBox.Show(this,ex.Message,"CopyCheck",MessageBoxButtons.OK,MessageBoxIcon.Error); }
         };
         Controls.Add(automatic);
-        var autoInstall=new Toggle { Text="Install automatically",Checked=AppPreferences.AutomaticInstall,Location=new Point(24,407) };
+        var autoInstall=new Toggle { Text="Install automatically",Checked=AppPreferences.AutomaticInstall,Location=new Point(24,383) };
         autoInstall.Enabled=automatic.Checked;
         automatic.CheckedChanged += delegate { autoInstall.Enabled=AppPreferences.AutomaticUpdates; };
         autoInstall.CheckedChanged += delegate {
@@ -350,16 +372,16 @@ class SettingsForm : Form {
             catch(Exception ex) { MessageBox.Show(this,ex.Message,"CopyCheck",MessageBoxButtons.OK,MessageBoxIcon.Error); }
         };
         Controls.Add(autoInstall);
-        updateStatus=new Label { Location=new Point(24,469),Size=new Size(330,48),ForeColor=Color.FromArgb(155,168,183),Font=new Font("Segoe UI",9) };
+        updateStatus=new UpdateStatusLabel { Location=new Point(24,485),Size=new Size(330,40),ForeColor=Color.FromArgb(155,168,183),Font=new Font("Segoe UI",9) };
         Controls.Add(updateStatus);
-        checkUpdates=UpdateButton("Check for updates",new Point(24,529),158);
-        installUpdate=UpdateButton("Install update",new Point(196,529),158);
+        checkUpdates=UpdateButton("Check for updates",new Point(24,443),158);
+        installUpdate=UpdateButton("Install update",new Point(196,443),158);
         checkUpdates.Click += async delegate { await Updates.CheckAsync(); };
         installUpdate.Click += async delegate {
             if(Updates.Busy || Updates.Available == null) return;
             var release=Updates.Available;
             Updates.Busy=true; RefreshUpdates();
-            updateStatus.Text="Downloading and verifying the installer...";
+            updateStatus.SetStatus("Downloading and verifying the installer...",false,false);
             try {
                 string file=await System.Threading.Tasks.Task.Run(()=>Updates.Download(release));
                 Updates.LaunchInstaller(file,true);
@@ -371,7 +393,8 @@ class SettingsForm : Form {
         };
         Updates.Changed += RefreshUpdates;
         FormClosed += delegate { Updates.Changed -= RefreshUpdates; };
-        var uninstall=UpdateButton("Uninstall CopyCheck",new Point(24,595),330);
+        var uninstall=UpdateButton("Uninstall CopyCheck",new Point(24,537),330);
+        uninstall.Danger=true; uninstall.BackColor=Color.FromArgb(45,29,35); uninstall.ForeColor=Color.FromArgb(217,147,159); uninstall.FlatAppearance.BorderColor=Color.FromArgb(95,56,66);
         uninstall.Enabled=ScheduledStartup.Installed && File.Exists(Path.Combine(Application.StartupPath,"unins000.exe"));
         uninstall.Click += delegate {
             try {
@@ -384,7 +407,7 @@ class SettingsForm : Form {
         };
         RefreshUpdates();
     }
-    Button UpdateButton(string text,Point location,int width) {
+    RoundedButton UpdateButton(string text,Point location,int width) {
         var button=new RoundedButton { Text=text,Location=location,Size=new Size(width,38),FlatStyle=FlatStyle.Flat,BackColor=Brand.Surface,ForeColor=Brand.Text,Cursor=Cursors.Hand };
         button.FlatAppearance.BorderColor=Color.FromArgb(65,76,89);
         Controls.Add(button); return button;
@@ -392,7 +415,7 @@ class SettingsForm : Form {
     void RefreshUpdates() {
         if(IsDisposed) return;
         if(InvokeRequired) { if(IsHandleCreated) BeginInvoke((Action)RefreshUpdates); return; }
-        updateStatus.Text=Updates.Status;
+        updateStatus.SetStatus(Updates.Status,!Updates.Busy && Updates.Status=="You're up to date.",!Updates.Busy && Updates.Available != null);
         checkUpdates.Enabled=!Updates.Busy;
         installUpdate.Enabled=!Updates.Busy && Updates.Available != null;
         installUpdate.Visible=Updates.Available != null;
@@ -433,7 +456,7 @@ static class Updates {
             return false;
         } finally { Busy=false; Notify(); }
     }
-    public static readonly Version Current = new Version(1,0,14);
+    public static readonly Version Current = new Version(1,0,15);
     public const string Api = "https://api.github.com/repos/aidenculpepper/copycheck/releases/latest";
     public static ReleaseInfo Available;
     public static bool Busy;

@@ -1,6 +1,6 @@
-# CopyCheck Update 014 — First copy retry
+# CopyCheck Update 015 — Settings polish
 
-Version 1.0.14. Windows 10/11 x64. Run CopyCheckSetup.exe to install. Fresh installs enable startup and administrator mode. Upgrades preserve existing preferences.
+Version 1.0.15. Windows 10/11 x64. Run CopyCheckSetup.exe to install. Fresh installs enable startup and administrator mode. Upgrades preserve existing preferences.
 
 ## Update settings
 
@@ -28,3 +28,6 @@ Validation: 20 startup and automatic-install decision/argument checks, settings 
 
 First-copy fix: confirmed copies retry unavailable text bounds for up to two seconds. Clipboard readiness is retried every 100 ms within the copy window. Changed clipboard sequence, source ownership, and populated clipboard are still required. Leaving the source window cancels feedback. A reboot reproduction remains untested.
 Validation: 28 checks passed, including cold selection bounds, late clipboard rejection, duplicate events, bounded retries, cancellation/recovery, and existing startup/update regressions. App and Inno builds passed. Live reboot behavior remains untested.
+
+Settings layout: status sits directly below Check for updates; successful up-to-date check uses green text with a small vector checkmark. Available updates use muted red. Uninstall has a subtle red tint and the installed version is at the bottom.
+Validation: settings rendering reviewed; 28 inherited regression checks and app/Inno builds passed. Text-position issue will be addressed in the following update.

@@ -1,1 +1,1 @@
-Fix missed checkmark when the first successful copy arrives before clipboard data or text selection bounds are ready. Retry briefly without requiring another Ctrl+C. Keep clipboard success verification and cancel feedback when switching windows.
+Polish Settings: subtly red Uninstall button; green up-to-date status with a small checkmark; muted red when a newer version is available. Move status directly below Check for updates and installed version below Uninstall. Compact the update section.
