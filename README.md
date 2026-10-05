@@ -1,6 +1,6 @@
-# CopyCheck Update 017 — Preference file lock fix
+# CopyCheck Update 018 — Settings header
 
-Version 1.0.17. Windows 10/11 x64. Run CopyCheckSetup.exe to install. Fresh installs enable startup and administrator mode. Upgrades preserve existing preferences.
+Version 1.0.18. Windows 10/11 x64. Run CopyCheckSetup.exe to install. Fresh installs enable startup and administrator mode. Upgrades preserve existing preferences.
 
 ## Update settings
 
@@ -37,3 +37,5 @@ Validation: 39 regression checks passed, including collapsed carets, mismatched 
 
 Preference saves now atomically replace a temporary file, retrying transient sharing/lock conflicts for up to three seconds. Readers allow replacement without locking out saves. Persistent locks and permission errors still surface.
 Validation: 46 checks passed, including saves with compatible readers, released external locks, persistent locks preserving previous data, and temporary-file cleanup. App/Inno builds passed. Full elevated installation remains untested.
+
+CopyCheck is now the main heading above a smaller Settings label.

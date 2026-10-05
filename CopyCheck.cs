@@ -10,8 +10,8 @@ using System.Security.Principal;
 using System.Reflection;
 [assembly: AssemblyTitle("CopyCheck")]
 [assembly: AssemblyProduct("CopyCheck")]
-[assembly: AssemblyVersion("1.0.17.0")]
-[assembly: AssemblyFileVersion("1.0.17.0")]
+[assembly: AssemblyVersion("1.0.18.0")]
+[assembly: AssemblyFileVersion("1.0.18.0")]
 
 namespace CopyCheck {
 static class Program {
@@ -361,7 +361,8 @@ class SettingsForm : Form {
         Font = new Font("Segoe UI",10); FormBorderStyle = FormBorderStyle.FixedDialog; MaximizeBox = false; MinimizeBox = false;
         StartPosition = FormStartPosition.Manual; AutoScaleMode = AutoScaleMode.Dpi;
         icon = Brand.CreateIcon(); Icon = icon;
-        Controls.Add(new Label { Text = "Settings", AutoSize = true, Font = new Font("Segoe UI Semibold",19), Location = new Point(24,22), ForeColor = Brand.Text });
+        Controls.Add(new Label { Text = "CopyCheck", AutoSize = true, Font = new Font("Segoe UI Semibold",19), Location = new Point(24,14), ForeColor = Brand.Text });
+        Controls.Add(new Label { Text = "Settings", AutoSize = true, Font = new Font("Segoe UI",10), Location = new Point(24,51), ForeColor = Color.FromArgb(155,168,183) });
         var animation = new Toggle { Text = "Copy checkmark", Checked = enabled, Location = new Point(24,83) };
         animation.CheckedChanged += delegate { if(AnimationChanged != null) AnimationChanged(animation.Checked); };
         Controls.Add(animation);
@@ -504,7 +505,7 @@ static class Updates {
             return false;
         } finally { Busy=false; Notify(); }
     }
-    public static readonly Version Current = new Version(1,0,17);
+    public static readonly Version Current = new Version(1,0,18);
     public const string Api = "https://api.github.com/repos/aidenculpepper/copycheck/releases/latest";
     public static ReleaseInfo Available;
     public static bool Busy;

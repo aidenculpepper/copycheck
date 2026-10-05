@@ -1,1 +1,1 @@
-Fix installation failure while saving administrator/startup preferences when another process briefly locks a preference file. Save preferences atomically and retry transient sharing violations. Readers allow safe file replacement. Preserve existing settings and copied-text fixes.
+Add CopyCheck as the main heading in the settings window, with a smaller Settings label beneath it.
