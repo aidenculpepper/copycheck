@@ -10,8 +10,8 @@ using System.Security.Principal;
 using System.Reflection;
 [assembly: AssemblyTitle("CopyCheck")]
 [assembly: AssemblyProduct("CopyCheck")]
-[assembly: AssemblyVersion("1.0.10.0")]
-[assembly: AssemblyFileVersion("1.0.10.0")]
+[assembly: AssemblyVersion("1.0.11.0")]
+[assembly: AssemblyFileVersion("1.0.11.0")]
 
 namespace CopyCheck {
 static class Program {
@@ -317,7 +317,7 @@ class SettingsForm : Form {
             updateStatus.Text="Downloading and verifying the installer...";
             try {
                 string file=await System.Threading.Tasks.Task.Run(()=>Updates.Download(release));
-                Updates.LaunchInstaller(file);
+                Updates.LaunchInstaller(file,true);
                 if(AdministratorRestarted != null) AdministratorRestarted();
             } catch(Exception ex) {
                 var native=ex as System.ComponentModel.Win32Exception;
@@ -388,7 +388,7 @@ static class Updates {
             return false;
         } finally { Busy=false; Notify(); }
     }
-    public static readonly Version Current = new Version(1,0,10);
+    public static readonly Version Current = new Version(1,0,11);
     public const string Api = "https://api.github.com/repos/aidenculpepper/copycheck/releases/latest";
     public static ReleaseInfo Available;
     public static bool Busy;

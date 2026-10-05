@@ -1,12 +1,12 @@
-# CopyCheck Update 010 — Automatic installs
+# CopyCheck Update 011 — Silent manual updates
 
-Version 1.0.10. Windows 10/11 x64. Run CopyCheckSetup.exe to install. Fresh installs enable startup and administrator mode. Upgrades preserve existing preferences.
+Version 1.0.11. Windows 10/11 x64. Run CopyCheckSetup.exe to install. Fresh installs enable startup and administrator mode. Upgrades preserve existing preferences.
 
 ## Update settings
 
 - Check automatically: on by default; checks public GitHub Releases on launch and every six hours.
 - Install automatically: OFF by default; enabled only while automatic checks are on. When opted in, newer stable releases are downloaded and verified, then installed with silent Setup and CopyCheck relaunched after success.
-- Check for updates and Install update: manual checking and interactive installation remain available.
+- Check for updates and Install update: manual checking remains available; Install update uses silent Setup and relaunches CopyCheck after success, even when Install automatically is off.
 - Turning off automatic installation during download prevents Setup from launching.
 - Check/download errors and cancelled UAC prompts leave the app running. A setup failure after launch may require opening CopyCheck again.
 
