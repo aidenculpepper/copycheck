@@ -10,8 +10,8 @@ using System.Security.Principal;
 using System.Reflection;
 [assembly: AssemblyTitle("CopyCheck")]
 [assembly: AssemblyProduct("CopyCheck")]
-[assembly: AssemblyVersion("1.0.7.0")]
-[assembly: AssemblyFileVersion("1.0.7.0")]
+[assembly: AssemblyVersion("1.0.8.0")]
+[assembly: AssemblyFileVersion("1.0.8.0")]
 
 namespace CopyCheck {
 static class Program {
@@ -21,20 +21,25 @@ static class Program {
         Application.EnableVisualStyles();
         Application.SetCompatibleTextRenderingDefault(false);
         if(Array.IndexOf(args,"--configure-install") >= 0 || Array.IndexOf(args,"--remove-install") >= 0) {
+            string step = "checking administrator permission";
             try {
                 if(!Elevation.IsAdministrator) throw new InvalidOperationException("Setup requires administrator permission.");
                 if(Array.IndexOf(args,"--configure-install") >= 0) {
+                    step = "checking the signed-in account";
                     ScheduledStartup.CheckInstallerAccount();
+                    step = "checking the existing startup task";
                     bool upgrading = ScheduledStartup.HasTask;
                     bool administrator = upgrading ? AdminPreference.Enabled : true;
                     bool startup = upgrading ? Startup.IsEnabled : true;
+                    step = "registering the startup task";
                     ScheduledStartup.Configure(administrator,startup);
+                    step = "saving startup preferences";
                     AdminPreference.Enabled = administrator;
                     Startup.RemoveLegacyShortcut();
                 } else ScheduledStartup.RemoveAllInstalledTasks();
                 return 0;
             } catch(Exception ex) {
-                MessageBox.Show(ex.Message,"CopyCheck setup",MessageBoxButtons.OK,MessageBoxIcon.Error); return 1;
+                MessageBox.Show("Failed while "+step+".\n"+ex.Message+"\nError: 0x"+ex.HResult.ToString("X8"),"CopyCheck setup",MessageBoxButtons.OK,MessageBoxIcon.Error); return 1;
             }
         }
         for(int i = 0; i < args.Length-1; i++) {
@@ -344,7 +349,7 @@ sealed class ReleaseInfo {
     public long Size;
 }
 static class Updates {
-    public static readonly Version Current = new Version(1,0,7);
+    public static readonly Version Current = new Version(1,0,8);
     public const string Api = "https://api.github.com/repos/aidenculpepper/copycheck/releases/latest";
     public static ReleaseInfo Available;
     public static bool Busy;
@@ -533,9 +538,21 @@ static class ScheduledStartup {
         service.Connect(); return service;
     }
     public static bool HasTask { get {
-        try { using(var scope=new ComObjects()) { dynamic service=Connect(scope), folder=scope.Keep(service.GetFolder("\\")); scope.Keep(folder.GetTask(Name)); return true; } }
-        catch(COMException ex) { if(ex.ErrorCode == unchecked((int)0x80070002)) return false; throw; }
+        using(var scope=new ComObjects()) {
+            dynamic service=Connect(scope), folder=scope.Keep(service.GetFolder("\\"));
+            return TaskExists(folder,Name,scope);
+        }
     } }
+    internal static bool TaskExists(dynamic folder,string name,ComObjects scope) {
+        try { scope.Keep(folder.GetTask(name)); return true; }
+        catch(Exception ex) {
+            // COM interop maps ERROR_FILE_NOT_FOUND to FileNotFoundException,
+            // not necessarily COMException. A missing task is normal on first install.
+            if((ex is COMException || ex is FileNotFoundException || ex is DirectoryNotFoundException) &&
+               (ex.HResult == unchecked((int)0x80070002) || ex.HResult == unchecked((int)0x80070003))) return false;
+            throw;
+        }
+    }
     public static bool AtLogon { get { return ReadState(false); } }
     public static bool Highest { get { return ReadState(true); } }
     static bool ReadState(bool highest) {
