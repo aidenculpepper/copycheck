@@ -1,1 +1,1 @@
-Polish Settings: subtly red Uninstall button; green up-to-date status with a small checkmark; muted red when a newer version is available. Move status directly below Check for updates and installed version below Uninstall. Compact the update section.
+Fix checkmarks appearing at an unrelated textbox caret: only use nonempty source-window selections matching the copied text. Search document/text providers for broader browser and desktop app support. Run accessibility queries in the background and discard stale results. Preserve Update 015 settings improvements.

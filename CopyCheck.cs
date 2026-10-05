@@ -10,8 +10,8 @@ using System.Security.Principal;
 using System.Reflection;
 [assembly: AssemblyTitle("CopyCheck")]
 [assembly: AssemblyProduct("CopyCheck")]
-[assembly: AssemblyVersion("1.0.15.0")]
-[assembly: AssemblyFileVersion("1.0.15.0")]
+[assembly: AssemblyVersion("1.0.16.0")]
+[assembly: AssemblyFileVersion("1.0.16.0")]
 
 namespace CopyCheck {
 static class Program {
@@ -79,7 +79,7 @@ class CopyContext : ApplicationContext {
     uint sequence;
     IntPtr source;
     readonly CopyFeedbackAttempt attempt = new CopyFeedbackAttempt();
-    bool enabled = true, cDown;
+    bool enabled = true, cDown, selectionQueryActive;
     Form settings;
     public CopyContext(bool showSettings, bool animationEnabled) {
         enabled = animationEnabled;
@@ -135,39 +135,32 @@ class CopyContext : ApplicationContext {
         }
         return Native.CallNextHookEx(hook, code, w, l);
     }
-    Point? SelectionAnchor() {
-        try {
-            var element = AutomationElement.FocusedElement;
-            object pattern;
-            if(element != null && element.TryGetCurrentPattern(TextPattern.Pattern, out pattern)) {
-                var ranges = ((TextPattern)pattern).GetSelection();
-                if(ranges.Length > 0) {
-                    var last = ranges[ranges.Length - 1];
-                    var tail = last.Clone();
-                    tail.MoveEndpointByRange(TextPatternRangeEndpoint.Start, last, TextPatternRangeEndpoint.End);
-                    tail.MoveEndpointByUnit(TextPatternRangeEndpoint.Start, TextUnit.Character, -1);
-                    var rect = tail.GetBoundingRectangles();
-                    if(rect.Length == 0 || rect[rect.Length-1].Width <= 0) rect = last.GetBoundingRectangles();
-                    for(int i = rect.Length-1; i >= 0; i--) {
-                        if(rect[i].Width > 0 && rect[i].Height > 0)
-                            return new Point((int)Math.Round(rect[i].Right), (int)Math.Round(rect[i].Y + rect[i].Height/2));
-                    }
-                }
-            }
-        } catch { }
-        return null;
-    }
-    internal void ClipboardChanged() {
-        if(!enabled || !attempt.CanRetry(DateTime.UtcNow)) return;
+    internal async void ClipboardChanged() {
+        if(exiting || !enabled || !attempt.CanRetry(DateTime.UtcNow)) return;
         if(Native.GetForegroundWindow() != source) { attempt.Cancel(); return; }
-        if(Native.GetClipboardSequenceNumber() == sequence) return;
-        // Require a populated clipboard owned by the application that received Ctrl+C.
-        uint sourcePid, ownerPid;
-        Native.GetWindowThreadProcessId(source, out sourcePid);
-        Native.GetWindowThreadProcessId(Native.GetClipboardOwner(), out ownerPid);
+        uint changedSequence=Native.GetClipboardSequenceNumber();
+        if(changedSequence == sequence || selectionQueryActive) return;
+        uint sourcePid,ownerPid;
+        Native.GetWindowThreadProcessId(source,out sourcePid);
+        Native.GetWindowThreadProcessId(Native.GetClipboardOwner(),out ownerPid);
         if(sourcePid == 0 || sourcePid != ownerPid || Native.CountClipboardFormats() == 0) return;
-        var anchor = attempt.TryComplete(DateTime.UtcNow,true,SelectionAnchor);
-        if(anchor.HasValue) new CheckOverlay(anchor.Value).Show();
+        string copiedText;
+        try { copiedText=Clipboard.GetText(TextDataFormat.UnicodeText); }
+        catch(System.Runtime.InteropServices.ExternalException) { return; }
+        if(string.IsNullOrWhiteSpace(copiedText)) return;
+        int generation=attempt.Generation;
+        IntPtr sourceWindow=source;
+        attempt.TryComplete(DateTime.UtcNow,true,delegate { return null; });
+        selectionQueryActive=true;
+        try {
+            // UI Automation providers may block; keep this work off the keyboard hook thread.
+            Point? found=await System.Threading.Tasks.Task.Run(()=>SelectionLocator.Find(sourceWindow,copiedText));
+            if(exiting || !enabled || !attempt.IsCurrent(generation)) return;
+            if(Native.GetForegroundWindow() != sourceWindow || Native.GetClipboardSequenceNumber() != changedSequence) { attempt.Cancel(); return; }
+            var anchor=attempt.TryComplete(DateTime.UtcNow,true,()=>found);
+            if(anchor.HasValue) new CheckOverlay(anchor.Value).Show();
+        } catch(Exception) { /* Unavailable accessibility providers leave the bounded retry active. */ }
+        finally { selectionQueryActive=false; }
     }
     void ShowSettings() {
         if(settings != null && !settings.IsDisposed) { settings.Activate(); return; }
@@ -186,12 +179,67 @@ class CopyContext : ApplicationContext {
         base.ExitThreadCore();
     }
 }
+static class SelectionLocator {
+    internal static bool MatchesSelection(string selected,string copied,bool collapsed) {
+        return !collapsed && !string.IsNullOrWhiteSpace(selected) && Normalize(selected)==Normalize(copied);
+    }
+    static string Normalize(string text) {
+        var result=new System.Text.StringBuilder(); bool space=false;
+        foreach(char c in text ?? "") {
+            if(char.IsWhiteSpace(c)) { space=result.Length>0; continue; }
+            if(space) { result.Append(' '); space=false; }
+            result.Append(c);
+        }
+        return result.ToString();
+    }
+    public static Point? Find(IntPtr window,string copied) {
+        try {
+            var root=AutomationElement.FromHandle(window);
+            if(root==null) return null;
+            Point? anchor=FromElement(root,copied);
+            if(anchor.HasValue) return anchor;
+            // Browsers and Electron/WebView apps expose page selection through a document,
+            // even when keyboard focus is on a link or a different textbox.
+            var documents=root.FindAll(TreeScope.Descendants,new PropertyCondition(AutomationElement.ControlTypeProperty,ControlType.Document));
+            for(int i=0;i<documents.Count && i<24;i++) {
+                anchor=FromElement(documents[i],copied); if(anchor.HasValue) return anchor;
+            }
+            var textProviders=root.FindAll(TreeScope.Descendants,new PropertyCondition(AutomationElement.IsTextPatternAvailableProperty,true));
+            for(int i=0;i<textProviders.Count && i<80;i++) {
+                anchor=FromElement(textProviders[i],copied); if(anchor.HasValue) return anchor;
+            }
+        } catch(Exception) { }
+        return null;
+    }
+    static Point? FromElement(AutomationElement element,string copied) {
+        try {
+            object pattern;
+            if(!element.TryGetCurrentPattern(TextPattern.Pattern,out pattern)) return null;
+            var ranges=((TextPattern)pattern).GetSelection();
+            foreach(var range in ranges) {
+                bool collapsed=range.CompareEndpoints(TextPatternRangeEndpoint.Start,range,TextPatternRangeEndpoint.End)==0;
+                if(collapsed || !MatchesSelection(range.GetText(copied.Length+2),copied,false)) continue;
+                var tail=range.Clone();
+                tail.MoveEndpointByRange(TextPatternRangeEndpoint.Start,range,TextPatternRangeEndpoint.End);
+                tail.MoveEndpointByUnit(TextPatternRangeEndpoint.Start,TextUnit.Character,-1);
+                var rect=tail.GetBoundingRectangles();
+                if(rect.Length==0 || rect[rect.Length-1].Width<=0) rect=range.GetBoundingRectangles();
+                for(int i=rect.Length-1;i>=0;i--) {
+                    if(rect[i].Width>0 && rect[i].Height>0) return new Point((int)Math.Round(rect[i].Right),(int)Math.Round(rect[i].Y+rect[i].Height/2));
+                }
+            }
+        } catch(Exception) { }
+        return null;
+    }
+}
 sealed class CopyFeedbackAttempt {
     public bool Active { get; private set; }
+    public int Generation { get; private set; }
+    public bool IsCurrent(int generation) { return Active && generation==Generation; }
     bool confirmed;
     DateTime deadline;
-    public void Begin(DateTime now) { Active=true; confirmed=false; deadline=now.AddMilliseconds(1500); }
-    public void Cancel() { Active=false; }
+    public void Begin(DateTime now) { Generation++; Active=true; confirmed=false; deadline=now.AddMilliseconds(1500); }
+    public void Cancel() { Generation++; Active=false; }
     public bool CanRetry(DateTime now) {
         if(Active && now > deadline) Cancel();
         return Active;
@@ -456,7 +504,7 @@ static class Updates {
             return false;
         } finally { Busy=false; Notify(); }
     }
-    public static readonly Version Current = new Version(1,0,15);
+    public static readonly Version Current = new Version(1,0,16);
     public const string Api = "https://api.github.com/repos/aidenculpepper/copycheck/releases/latest";
     public static ReleaseInfo Available;
     public static bool Busy;

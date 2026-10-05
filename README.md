@@ -1,6 +1,6 @@
-# CopyCheck Update 015 — Settings polish
+# CopyCheck Update 016 — Copied text position
 
-Version 1.0.15. Windows 10/11 x64. Run CopyCheckSetup.exe to install. Fresh installs enable startup and administrator mode. Upgrades preserve existing preferences.
+Version 1.0.16. Windows 10/11 x64. Run CopyCheckSetup.exe to install. Fresh installs enable startup and administrator mode. Upgrades preserve existing preferences.
 
 ## Update settings
 
@@ -31,3 +31,6 @@ Validation: 28 checks passed, including cold selection bounds, late clipboard re
 
 Settings layout: status sits directly below Check for updates; successful up-to-date check uses green text with a small vector checkmark. Available updates use muted red. Uninstall has a subtle red tint and the installed version is at the bottom.
 Validation: settings rendering reviewed; 28 inherited regression checks and app/Inno builds passed. Text-position issue will be addressed in the following update.
+
+Position fix: find nonempty selected text matching the successful clipboard copy in the source window, including document providers used by browser/Electron/WebView apps. Empty textbox carets are rejected. Accessibility queries run in the background; stale results from older copies, changed clipboard contents, or a different source window are discarded. Apps that do not expose selection bounds may still have no animation; never guess a caret location. Live ChatGPT selection behavior still needs desktop confirmation.
+Validation: 39 regression checks passed, including collapsed carets, mismatched selected text, document whitespace, stale asynchronous results, first-copy retry, and startup/update behavior. App/Inno builds passed. Live ChatGPT behavior has not been verified in this session.
