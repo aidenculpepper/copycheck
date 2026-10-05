@@ -10,8 +10,8 @@ using System.Security.Principal;
 using System.Reflection;
 [assembly: AssemblyTitle("CopyCheck")]
 [assembly: AssemblyProduct("CopyCheck")]
-[assembly: AssemblyVersion("1.0.16.0")]
-[assembly: AssemblyFileVersion("1.0.16.0")]
+[assembly: AssemblyVersion("1.0.17.0")]
+[assembly: AssemblyFileVersion("1.0.17.0")]
 
 namespace CopyCheck {
 static class Program {
@@ -504,7 +504,7 @@ static class Updates {
             return false;
         } finally { Busy=false; Notify(); }
     }
-    public static readonly Version Current = new Version(1,0,16);
+    public static readonly Version Current = new Version(1,0,17);
     public const string Api = "https://api.github.com/repos/aidenculpepper/copycheck/releases/latest";
     public static ReleaseInfo Available;
     public static bool Busy;
@@ -623,12 +623,30 @@ static class AdminPreference {
         return ReadValue(file,ScheduledStartup.Installed);
     }
     internal static bool ReadValue(string file,bool defaultValue) {
-        try { return File.Exists(file) ? File.ReadAllText(file).Trim() == "1" : defaultValue; }
+        try {
+            if(!File.Exists(file)) return defaultValue;
+            using(var stream=new FileStream(file,FileMode.Open,FileAccess.Read,FileShare.ReadWrite | FileShare.Delete))
+            using(var reader=new StreamReader(stream)) return reader.ReadToEnd().Trim()=="1";
+        }
         catch(IOException) { return false; } catch(UnauthorizedAccessException) { return false; }
     }
     internal static void Write(string file,bool value) {
         Directory.CreateDirectory(Path.GetDirectoryName(file));
-        File.WriteAllText(file,value ? "1" : "0");
+        string temporary=file+"."+Guid.NewGuid().ToString("N")+".tmp";
+        try {
+            File.WriteAllText(temporary,value ? "1" : "0");
+            for(int retry=0;;retry++) {
+                try {
+                    if(File.Exists(file)) File.Replace(temporary,file,null);
+                    else File.Move(temporary,file);
+                    break;
+                } catch(IOException ex) {
+                    int error=ex.HResult & 0xffff;
+                    if(retry>=30 || (error!=32 && error!=33 && error!=80 && error!=183)) throw;
+                    System.Threading.Thread.Sleep(100);
+                }
+            }
+        } finally { if(File.Exists(temporary)) File.Delete(temporary); }
     }
 }
 static class Elevation {

@@ -1,6 +1,6 @@
-# CopyCheck Update 016 — Copied text position
+# CopyCheck Update 017 — Preference file lock fix
 
-Version 1.0.16. Windows 10/11 x64. Run CopyCheckSetup.exe to install. Fresh installs enable startup and administrator mode. Upgrades preserve existing preferences.
+Version 1.0.17. Windows 10/11 x64. Run CopyCheckSetup.exe to install. Fresh installs enable startup and administrator mode. Upgrades preserve existing preferences.
 
 ## Update settings
 
@@ -34,3 +34,6 @@ Validation: settings rendering reviewed; 28 inherited regression checks and app/
 
 Position fix: find nonempty selected text matching the successful clipboard copy in the source window, including document providers used by browser/Electron/WebView apps. Empty textbox carets are rejected. Accessibility queries run in the background; stale results from older copies, changed clipboard contents, or a different source window are discarded. Apps that do not expose selection bounds may still have no animation; never guess a caret location. Live ChatGPT selection behavior still needs desktop confirmation.
 Validation: 39 regression checks passed, including collapsed carets, mismatched selected text, document whitespace, stale asynchronous results, first-copy retry, and startup/update behavior. App/Inno builds passed. Live ChatGPT behavior has not been verified in this session.
+
+Preference saves now atomically replace a temporary file, retrying transient sharing/lock conflicts for up to three seconds. Readers allow replacement without locking out saves. Persistent locks and permission errors still surface.
+Validation: 46 checks passed, including saves with compatible readers, released external locks, persistent locks preserving previous data, and temporary-file cleanup. App/Inno builds passed. Full elevated installation remains untested.
