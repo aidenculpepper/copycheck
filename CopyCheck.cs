@@ -371,8 +371,9 @@ class SettingsForm : Form {
         Font = new Font("Segoe UI",10); FormBorderStyle = FormBorderStyle.FixedDialog; MaximizeBox = false; MinimizeBox = false;
         StartPosition = FormStartPosition.Manual; AutoScaleMode = AutoScaleMode.Dpi;
         icon = Brand.CreateIcon(); Icon = icon;
-        Controls.Add(new Label { Text = "CopyCheck", AutoSize = true, Font = new Font("Segoe UI Semibold",19), Location = new Point(24,14), ForeColor = Brand.Text });
-        Controls.Add(new Label { Text = "Settings", AutoSize = true, Font = new Font("Segoe UI",10), Location = new Point(24,51), ForeColor = Color.FromArgb(155,168,183) });
+        var heading = new Label { Text = "CopyCheck", AutoSize = true, Font = new Font("Segoe UI Semibold",19), Location = new Point(24,14), ForeColor = Brand.Text };
+        var settingsLabel = new Label { Text = "Settings", AutoSize = true, Font = new Font("Segoe UI",10), Location = new Point(24,51), ForeColor = Color.FromArgb(155,168,183) };
+        Controls.Add(heading); Controls.Add(settingsLabel);
         var animation = new Toggle { Text = "Copy checkmark", Checked = enabled, Location = new Point(24,83) };
         animation.CheckedChanged += delegate { if(AnimationChanged != null) AnimationChanged(animation.Checked); };
         Controls.Add(animation);
@@ -423,6 +424,15 @@ class SettingsForm : Form {
         };
         Controls.Add(admin);
         AddUpdateControls();
+        // Fonts are sized in points and grow with the display scale, but these positions are fixed
+        // pixels. Above 100% the heading outgrows its slot and covers the Settings label, so move the
+        // label below the heading and push every row down by the same overflow.
+        int settingsTop = Math.Max(51,heading.Bottom+1), shift = Math.Max(0,settingsTop+settingsLabel.Height+9-83);
+        settingsLabel.Top = settingsTop;
+        if(shift > 0) {
+            foreach(Control control in Controls) if(control != heading && control != settingsLabel) control.Top += shift;
+            ClientSize = new Size(ClientSize.Width,ClientSize.Height+shift);
+        }
     }
 
     UpdateStatusLabel updateStatus;
