@@ -1,6 +1,6 @@
-# CopyCheck Update 019 — Matching section headers
+# CopyCheck Update 020 — Mouse checkmark
 
-Version 1.0.19. Windows 10/11 x64. Run CopyCheckSetup.exe to install. Fresh installs enable startup and administrator mode. Upgrades preserve existing preferences.
+Version 1.0.20. Windows 10/11 x64. Run CopyCheckSetup.exe to install. Fresh installs enable startup and administrator mode. Upgrades preserve existing preferences.
 
 ## Update settings
 
@@ -41,3 +41,6 @@ Validation: 46 checks passed, including saves with compatible readers, released 
 CopyCheck is now the main heading above a smaller Settings label.
 
 Updates now matches the smaller muted Settings header.
+
+Checkmark next to mouse: OFF by default. Confirmed Ctrl+C text copies show beside the current pointer instead of selected text. Saved per user and applied immediately; copy-success checks and master animation switch remain required.
+Validation: 49 checks and app/Inno builds passed; settings rendering reviewed. Full live mouse-mode copy behavior remains untested.

@@ -10,8 +10,8 @@ using System.Security.Principal;
 using System.Reflection;
 [assembly: AssemblyTitle("CopyCheck")]
 [assembly: AssemblyProduct("CopyCheck")]
-[assembly: AssemblyVersion("1.0.19.0")]
-[assembly: AssemblyFileVersion("1.0.19.0")]
+[assembly: AssemblyVersion("1.0.20.0")]
+[assembly: AssemblyFileVersion("1.0.20.0")]
 
 namespace CopyCheck {
 static class Program {
@@ -79,7 +79,7 @@ class CopyContext : ApplicationContext {
     uint sequence;
     IntPtr source;
     readonly CopyFeedbackAttempt attempt = new CopyFeedbackAttempt();
-    bool enabled = true, cDown, selectionQueryActive;
+    bool enabled = true, cDown, selectionQueryActive, mousePlacement=AppPreferences.MousePlacement;
     Form settings;
     public CopyContext(bool showSettings, bool animationEnabled) {
         enabled = animationEnabled;
@@ -148,6 +148,11 @@ class CopyContext : ApplicationContext {
         try { copiedText=Clipboard.GetText(TextDataFormat.UnicodeText); }
         catch(System.Runtime.InteropServices.ExternalException) { return; }
         if(string.IsNullOrWhiteSpace(copiedText)) return;
+        if(mousePlacement) {
+            var mouseAnchor=attempt.TryComplete(DateTime.UtcNow,true,()=>MouseAnchor(Cursor.Position,SystemInformation.CursorSize));
+            if(mouseAnchor.HasValue) new CheckOverlay(mouseAnchor.Value).Show();
+            return;
+        }
         int generation=attempt.Generation;
         IntPtr sourceWindow=source;
         attempt.TryComplete(DateTime.UtcNow,true,delegate { return null; });
@@ -162,10 +167,14 @@ class CopyContext : ApplicationContext {
         } catch(Exception) { /* Unavailable accessibility providers leave the bounded retry active. */ }
         finally { selectionQueryActive=false; }
     }
+    internal static Point MouseAnchor(Point cursor,Size cursorSize) {
+        return new Point(cursor.X+Math.Max(8,cursorSize.Width/2),cursor.Y+Math.Max(8,cursorSize.Height/2));
+    }
     void ShowSettings() {
         if(settings != null && !settings.IsDisposed) { settings.Activate(); return; }
         settings = new SettingsForm(enabled);
         ((SettingsForm)settings).AnimationChanged += delegate(bool value) { enabled = value; AppPreferences.Animation = value; attempt.Cancel(); };
+        ((SettingsForm)settings).MousePlacementChanged += delegate(bool value) { mousePlacement=value; attempt.Cancel(); };
         ((SettingsForm)settings).AdministratorRestarted += delegate { ExitThread(); };
         var area = Screen.FromPoint(Cursor.Position).WorkingArea;
         settings.Location = new Point(area.Left+(area.Width-settings.Width)/2, area.Top+(area.Height-settings.Height)/2);
@@ -354,10 +363,11 @@ class UpdateStatusLabel : Label {
 }
 class SettingsForm : Form {
     public event Action<bool> AnimationChanged;
+    public event Action<bool> MousePlacementChanged;
     public event Action AdministratorRestarted;
     readonly Icon icon;
     public SettingsForm(bool enabled) {
-        Text = "CopyCheck"; ClientSize = new Size(378,623); BackColor = Brand.Background; ForeColor = Brand.Text;
+        Text = "CopyCheck"; ClientSize = new Size(378,687); BackColor = Brand.Background; ForeColor = Brand.Text;
         Font = new Font("Segoe UI",10); FormBorderStyle = FormBorderStyle.FixedDialog; MaximizeBox = false; MinimizeBox = false;
         StartPosition = FormStartPosition.Manual; AutoScaleMode = AutoScaleMode.Dpi;
         icon = Brand.CreateIcon(); Icon = icon;
@@ -366,7 +376,20 @@ class SettingsForm : Form {
         var animation = new Toggle { Text = "Copy checkmark", Checked = enabled, Location = new Point(24,83) };
         animation.CheckedChanged += delegate { if(AnimationChanged != null) AnimationChanged(animation.Checked); };
         Controls.Add(animation);
-        var startup = new Toggle { Text = "Start on startup", Checked = Startup.IsEnabled, Location = new Point(24,147) };
+        var mousePlacement=new Toggle { Text="Checkmark next to mouse",Checked=AppPreferences.MousePlacement,Location=new Point(24,147) };
+        bool changingPlacement=false;
+        mousePlacement.CheckedChanged += delegate {
+            if(changingPlacement) return;
+            try {
+                AppPreferences.MousePlacement=mousePlacement.Checked;
+                if(MousePlacementChanged!=null) MousePlacementChanged(mousePlacement.Checked);
+            } catch(Exception ex) {
+                changingPlacement=true; mousePlacement.Checked=AppPreferences.MousePlacement; changingPlacement=false;
+                MessageBox.Show(this,ex.Message,"CopyCheck",MessageBoxButtons.OK,MessageBoxIcon.Error);
+            }
+        };
+        Controls.Add(mousePlacement);
+        var startup = new Toggle { Text = "Start on startup", Checked = Startup.IsEnabled, Location = new Point(24,211) };
         bool changing = false;
         startup.CheckedChanged += delegate {
             if(changing) return;
@@ -377,7 +400,7 @@ class SettingsForm : Form {
             }
         };
         Controls.Add(startup);
-        var admin = new Toggle { Text = "Run as administrator", Checked = AdminPreference.Enabled, Location = new Point(24,211) };
+        var admin = new Toggle { Text = "Run as administrator", Checked = AdminPreference.Enabled, Location = new Point(24,275) };
         bool adminChanging = false;
         admin.CheckedChanged += delegate {
             if(adminChanging) return;
@@ -405,15 +428,15 @@ class SettingsForm : Form {
     UpdateStatusLabel updateStatus;
     Button checkUpdates, installUpdate;
     void AddUpdateControls() {
-        Controls.Add(new Label { Text="Updates",AutoSize=true,Font=new Font("Segoe UI",10),Location=new Point(24,284),ForeColor=Color.FromArgb(155,168,183) });
-        Controls.Add(new Label { Text="Installed version "+Updates.Current,AutoSize=true,Location=new Point(24,589),ForeColor=Color.FromArgb(155,168,183),Font=new Font("Segoe UI",9) });
-        var automatic=new Toggle { Text="Check automatically",Checked=AppPreferences.AutomaticUpdates,Location=new Point(24,319) };
+        Controls.Add(new Label { Text="Updates",AutoSize=true,Font=new Font("Segoe UI",10),Location=new Point(24,348),ForeColor=Color.FromArgb(155,168,183) });
+        Controls.Add(new Label { Text="Installed version "+Updates.Current,AutoSize=true,Location=new Point(24,653),ForeColor=Color.FromArgb(155,168,183),Font=new Font("Segoe UI",9) });
+        var automatic=new Toggle { Text="Check automatically",Checked=AppPreferences.AutomaticUpdates,Location=new Point(24,383) };
         automatic.CheckedChanged += delegate {
             try { AppPreferences.AutomaticUpdates=automatic.Checked; }
             catch(Exception ex) { MessageBox.Show(this,ex.Message,"CopyCheck",MessageBoxButtons.OK,MessageBoxIcon.Error); }
         };
         Controls.Add(automatic);
-        var autoInstall=new Toggle { Text="Install automatically",Checked=AppPreferences.AutomaticInstall,Location=new Point(24,383) };
+        var autoInstall=new Toggle { Text="Install automatically",Checked=AppPreferences.AutomaticInstall,Location=new Point(24,447) };
         autoInstall.Enabled=automatic.Checked;
         automatic.CheckedChanged += delegate { autoInstall.Enabled=AppPreferences.AutomaticUpdates; };
         autoInstall.CheckedChanged += delegate {
@@ -421,10 +444,10 @@ class SettingsForm : Form {
             catch(Exception ex) { MessageBox.Show(this,ex.Message,"CopyCheck",MessageBoxButtons.OK,MessageBoxIcon.Error); }
         };
         Controls.Add(autoInstall);
-        updateStatus=new UpdateStatusLabel { Location=new Point(24,485),Size=new Size(330,40),ForeColor=Color.FromArgb(155,168,183),Font=new Font("Segoe UI",9) };
+        updateStatus=new UpdateStatusLabel { Location=new Point(24,549),Size=new Size(330,40),ForeColor=Color.FromArgb(155,168,183),Font=new Font("Segoe UI",9) };
         Controls.Add(updateStatus);
-        checkUpdates=UpdateButton("Check for updates",new Point(24,443),158);
-        installUpdate=UpdateButton("Install update",new Point(196,443),158);
+        checkUpdates=UpdateButton("Check for updates",new Point(24,507),158);
+        installUpdate=UpdateButton("Install update",new Point(196,507),158);
         checkUpdates.Click += async delegate { await Updates.CheckAsync(); };
         installUpdate.Click += async delegate {
             if(Updates.Busy || Updates.Available == null) return;
@@ -442,7 +465,7 @@ class SettingsForm : Form {
         };
         Updates.Changed += RefreshUpdates;
         FormClosed += delegate { Updates.Changed -= RefreshUpdates; };
-        var uninstall=UpdateButton("Uninstall CopyCheck",new Point(24,537),330);
+        var uninstall=UpdateButton("Uninstall CopyCheck",new Point(24,601),330);
         uninstall.Danger=true; uninstall.BackColor=Color.FromArgb(45,29,35); uninstall.ForeColor=Color.FromArgb(217,147,159); uninstall.FlatAppearance.BorderColor=Color.FromArgb(95,56,66);
         uninstall.Enabled=ScheduledStartup.Installed && File.Exists(Path.Combine(Application.StartupPath,"unins000.exe"));
         uninstall.Click += delegate {
@@ -482,6 +505,7 @@ static class AppPreferences {
     static string FileFor(string name) { return Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),"CopyCheck",name+".txt"); }
     public static bool AutomaticUpdates { get { return AdminPreference.ReadValue(FileFor("automatic-updates"),true); } set { AdminPreference.Write(FileFor("automatic-updates"),value); } }
     public static bool AutomaticInstall { get { return AdminPreference.ReadValue(FileFor("automatic-install"),false); } set { AdminPreference.Write(FileFor("automatic-install"),value); } }
+    public static bool MousePlacement { get { return AdminPreference.ReadValue(FileFor("mouse-placement"),false); } set { AdminPreference.Write(FileFor("mouse-placement"),value); } }
     public static bool Animation { get { return AdminPreference.ReadValue(FileFor("animation"),true); } set { AdminPreference.Write(FileFor("animation"),value); } }
 }
 sealed class ReleaseInfo {
@@ -505,7 +529,7 @@ static class Updates {
             return false;
         } finally { Busy=false; Notify(); }
     }
-    public static readonly Version Current = new Version(1,0,19);
+    public static readonly Version Current = new Version(1,0,20);
     public const string Api = "https://api.github.com/repos/aidenculpepper/copycheck/releases/latest";
     public static ReleaseInfo Available;
     public static bool Busy;
