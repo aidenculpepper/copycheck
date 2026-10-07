@@ -1,1 +1,1 @@
-Add Checkmark next to mouse setting, off by default. Successful Ctrl+C text copies show feedback beside the pointer instead of selected text when enabled. Save preference across restarts.
+Add saved checkmark size and duration controls. Refine mouse feedback with a compact dark-green badge, crisp mint check, subtle scale-in and smooth fade. Default size and duration remain Medium and 0.7 seconds.

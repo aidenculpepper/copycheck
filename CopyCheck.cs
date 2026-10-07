@@ -10,8 +10,8 @@ using System.Security.Principal;
 using System.Reflection;
 [assembly: AssemblyTitle("CopyCheck")]
 [assembly: AssemblyProduct("CopyCheck")]
-[assembly: AssemblyVersion("1.0.20.0")]
-[assembly: AssemblyFileVersion("1.0.20.0")]
+[assembly: AssemblyVersion("1.0.21.0")]
+[assembly: AssemblyFileVersion("1.0.21.0")]
 
 namespace CopyCheck {
 static class Program {
@@ -150,7 +150,7 @@ class CopyContext : ApplicationContext {
         if(string.IsNullOrWhiteSpace(copiedText)) return;
         if(mousePlacement) {
             var mouseAnchor=attempt.TryComplete(DateTime.UtcNow,true,()=>MouseAnchor(Cursor.Position,SystemInformation.CursorSize));
-            if(mouseAnchor.HasValue) new CheckOverlay(mouseAnchor.Value).Show();
+            if(mouseAnchor.HasValue) new CheckOverlay(mouseAnchor.Value,true).Show();
             return;
         }
         int generation=attempt.Generation;
@@ -367,7 +367,7 @@ class SettingsForm : Form {
     public event Action AdministratorRestarted;
     readonly Icon icon;
     public SettingsForm(bool enabled) {
-        Text = "CopyCheck"; ClientSize = new Size(378,687); BackColor = Brand.Background; ForeColor = Brand.Text;
+        Text = "CopyCheck"; ClientSize = new Size(378,Math.Min(751,Screen.PrimaryScreen.WorkingArea.Height-80)); AutoScroll=true; AutoScrollMinSize=new Size(354,731); BackColor = Brand.Background; ForeColor = Brand.Text;
         Font = new Font("Segoe UI",10); FormBorderStyle = FormBorderStyle.FixedDialog; MaximizeBox = false; MinimizeBox = false;
         StartPosition = FormStartPosition.Manual; AutoScaleMode = AutoScaleMode.Dpi;
         icon = Brand.CreateIcon(); Icon = icon;
@@ -389,7 +389,9 @@ class SettingsForm : Form {
             }
         };
         Controls.Add(mousePlacement);
-        var startup = new Toggle { Text = "Start on startup", Checked = Startup.IsEnabled, Location = new Point(24,211) };
+        AddChoice("Size",24,new string[] { "Small", "Medium", "Large" },AnimationStyle.Sizes,AppPreferences.CheckSize,value=>AppPreferences.CheckSize=value);
+        AddChoice("Duration",196,new string[] { "0.45 seconds", "0.7 seconds", "1.2 seconds", "1.8 seconds" },AnimationStyle.Durations,AppPreferences.CheckDuration,value=>AppPreferences.CheckDuration=value);
+        var startup = new Toggle { Text = "Start on startup", Checked = Startup.IsEnabled, Location = new Point(24,275) };
         bool changing = false;
         startup.CheckedChanged += delegate {
             if(changing) return;
@@ -400,7 +402,7 @@ class SettingsForm : Form {
             }
         };
         Controls.Add(startup);
-        var admin = new Toggle { Text = "Run as administrator", Checked = AdminPreference.Enabled, Location = new Point(24,275) };
+        var admin = new Toggle { Text = "Run as administrator", Checked = AdminPreference.Enabled, Location = new Point(24,339) };
         bool adminChanging = false;
         admin.CheckedChanged += delegate {
             if(adminChanging) return;
@@ -425,18 +427,35 @@ class SettingsForm : Form {
         AddUpdateControls();
     }
 
+    void AddChoice(string title,int x,string[] labels,int[] values,int current,Action<int> save) {
+        Controls.Add(new Label { Text=title,AutoSize=true,Location=new Point(x,208),ForeColor=Color.FromArgb(155,168,183),Font=new Font("Segoe UI",9) });
+        var choice=new ComboBox { Location=new Point(x,230),Size=new Size(158,28),DropDownStyle=ComboBoxStyle.DropDownList,FlatStyle=FlatStyle.Flat,BackColor=Brand.Surface,ForeColor=Brand.Text };
+        choice.DrawMode=DrawMode.OwnerDrawFixed; choice.ItemHeight=20;
+        choice.DrawItem += delegate(object sender,DrawItemEventArgs e) {
+            using(var background=new SolidBrush((e.State & DrawItemState.Selected)!=0 ? Color.FromArgb(42,53,64) : Brand.Surface)) e.Graphics.FillRectangle(background,e.Bounds);
+            if(e.Index>=0) TextRenderer.DrawText(e.Graphics,labels[e.Index],choice.Font,e.Bounds,Brand.Text,TextFormatFlags.Left | TextFormatFlags.VerticalCenter);
+        };
+        choice.Items.AddRange(labels); choice.SelectedIndex=Math.Max(0,Array.IndexOf(values,current));
+        int saved=choice.SelectedIndex; bool reverting=false;
+        choice.SelectedIndexChanged += delegate {
+            if(reverting) return;
+            try { save(values[choice.SelectedIndex]); saved=choice.SelectedIndex; }
+            catch(Exception ex) { reverting=true; choice.SelectedIndex=saved; reverting=false; MessageBox.Show(this,ex.Message,"CopyCheck",MessageBoxButtons.OK,MessageBoxIcon.Error); }
+        };
+        Controls.Add(choice);
+    }
     UpdateStatusLabel updateStatus;
     Button checkUpdates, installUpdate;
     void AddUpdateControls() {
-        Controls.Add(new Label { Text="Updates",AutoSize=true,Font=new Font("Segoe UI",10),Location=new Point(24,348),ForeColor=Color.FromArgb(155,168,183) });
-        Controls.Add(new Label { Text="Installed version "+Updates.Current,AutoSize=true,Location=new Point(24,653),ForeColor=Color.FromArgb(155,168,183),Font=new Font("Segoe UI",9) });
-        var automatic=new Toggle { Text="Check automatically",Checked=AppPreferences.AutomaticUpdates,Location=new Point(24,383) };
+        Controls.Add(new Label { Text="Updates",AutoSize=true,Font=new Font("Segoe UI",10),Location=new Point(24,412),ForeColor=Color.FromArgb(155,168,183) });
+        Controls.Add(new Label { Text="Installed version "+Updates.Current,AutoSize=true,Location=new Point(24,717),ForeColor=Color.FromArgb(155,168,183),Font=new Font("Segoe UI",9) });
+        var automatic=new Toggle { Text="Check automatically",Checked=AppPreferences.AutomaticUpdates,Location=new Point(24,447) };
         automatic.CheckedChanged += delegate {
             try { AppPreferences.AutomaticUpdates=automatic.Checked; }
             catch(Exception ex) { MessageBox.Show(this,ex.Message,"CopyCheck",MessageBoxButtons.OK,MessageBoxIcon.Error); }
         };
         Controls.Add(automatic);
-        var autoInstall=new Toggle { Text="Install automatically",Checked=AppPreferences.AutomaticInstall,Location=new Point(24,447) };
+        var autoInstall=new Toggle { Text="Install automatically",Checked=AppPreferences.AutomaticInstall,Location=new Point(24,511) };
         autoInstall.Enabled=automatic.Checked;
         automatic.CheckedChanged += delegate { autoInstall.Enabled=AppPreferences.AutomaticUpdates; };
         autoInstall.CheckedChanged += delegate {
@@ -444,10 +463,10 @@ class SettingsForm : Form {
             catch(Exception ex) { MessageBox.Show(this,ex.Message,"CopyCheck",MessageBoxButtons.OK,MessageBoxIcon.Error); }
         };
         Controls.Add(autoInstall);
-        updateStatus=new UpdateStatusLabel { Location=new Point(24,549),Size=new Size(330,40),ForeColor=Color.FromArgb(155,168,183),Font=new Font("Segoe UI",9) };
+        updateStatus=new UpdateStatusLabel { Location=new Point(24,613),Size=new Size(330,40),ForeColor=Color.FromArgb(155,168,183),Font=new Font("Segoe UI",9) };
         Controls.Add(updateStatus);
-        checkUpdates=UpdateButton("Check for updates",new Point(24,507),158);
-        installUpdate=UpdateButton("Install update",new Point(196,507),158);
+        checkUpdates=UpdateButton("Check for updates",new Point(24,571),158);
+        installUpdate=UpdateButton("Install update",new Point(196,571),158);
         checkUpdates.Click += async delegate { await Updates.CheckAsync(); };
         installUpdate.Click += async delegate {
             if(Updates.Busy || Updates.Available == null) return;
@@ -465,7 +484,7 @@ class SettingsForm : Form {
         };
         Updates.Changed += RefreshUpdates;
         FormClosed += delegate { Updates.Changed -= RefreshUpdates; };
-        var uninstall=UpdateButton("Uninstall CopyCheck",new Point(24,601),330);
+        var uninstall=UpdateButton("Uninstall CopyCheck",new Point(24,665),330);
         uninstall.Danger=true; uninstall.BackColor=Color.FromArgb(45,29,35); uninstall.ForeColor=Color.FromArgb(217,147,159); uninstall.FlatAppearance.BorderColor=Color.FromArgb(95,56,66);
         uninstall.Enabled=ScheduledStartup.Installed && File.Exists(Path.Combine(Application.StartupPath,"unins000.exe"));
         uninstall.Click += delegate {
@@ -501,10 +520,29 @@ class SettingsForm : Form {
     protected override void Dispose(bool disposing) { base.Dispose(disposing); if(disposing) icon.Dispose(); }
 }
 
+static class AnimationStyle {
+    public static readonly int[] Sizes={16,22,30};
+    public static readonly int[] Durations={450,700,1200,1800};
+    internal static int ParseChoice(string text,int[] choices,int fallback) {
+        int value; return int.TryParse(text,out value) && Array.IndexOf(choices,value)>=0 ? value : fallback;
+    }
+    internal static byte Opacity(double elapsed,int duration) {
+        double fade=duration*.3;
+        return (byte)Math.Max(0,Math.Min(255,255*(duration-elapsed)/fade));
+    }
+}
 static class AppPreferences {
     static string FileFor(string name) { return Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),"CopyCheck",name+".txt"); }
     public static bool AutomaticUpdates { get { return AdminPreference.ReadValue(FileFor("automatic-updates"),true); } set { AdminPreference.Write(FileFor("automatic-updates"),value); } }
     public static bool AutomaticInstall { get { return AdminPreference.ReadValue(FileFor("automatic-install"),false); } set { AdminPreference.Write(FileFor("automatic-install"),value); } }
+    static int ReadChoice(string name,int[] choices,int fallback) {
+        try {
+            using(var stream=new FileStream(FileFor(name),FileMode.Open,FileAccess.Read,FileShare.ReadWrite | FileShare.Delete))
+            using(var reader=new StreamReader(stream)) return AnimationStyle.ParseChoice(reader.ReadToEnd(),choices,fallback);
+        } catch(IOException) { return fallback; } catch(UnauthorizedAccessException) { return fallback; }
+    }
+    public static int CheckSize { get { return ReadChoice("check-size",AnimationStyle.Sizes,22); } set { AdminPreference.WriteText(FileFor("check-size"),AnimationStyle.ParseChoice(value.ToString(),AnimationStyle.Sizes,22).ToString()); } }
+    public static int CheckDuration { get { return ReadChoice("check-duration",AnimationStyle.Durations,700); } set { AdminPreference.WriteText(FileFor("check-duration"),AnimationStyle.ParseChoice(value.ToString(),AnimationStyle.Durations,700).ToString()); } }
     public static bool MousePlacement { get { return AdminPreference.ReadValue(FileFor("mouse-placement"),false); } set { AdminPreference.Write(FileFor("mouse-placement"),value); } }
     public static bool Animation { get { return AdminPreference.ReadValue(FileFor("animation"),true); } set { AdminPreference.Write(FileFor("animation"),value); } }
 }
@@ -529,7 +567,7 @@ static class Updates {
             return false;
         } finally { Busy=false; Notify(); }
     }
-    public static readonly Version Current = new Version(1,0,20);
+    public static readonly Version Current = new Version(1,0,21);
     public const string Api = "https://api.github.com/repos/aidenculpepper/copycheck/releases/latest";
     public static ReleaseInfo Available;
     public static bool Busy;
@@ -655,11 +693,12 @@ static class AdminPreference {
         }
         catch(IOException) { return false; } catch(UnauthorizedAccessException) { return false; }
     }
-    internal static void Write(string file,bool value) {
+    internal static void Write(string file,bool value) { WriteText(file,value ? "1" : "0"); }
+    internal static void WriteText(string file,string value) {
         Directory.CreateDirectory(Path.GetDirectoryName(file));
         string temporary=file+"."+Guid.NewGuid().ToString("N")+".tmp";
         try {
-            File.WriteAllText(temporary,value ? "1" : "0");
+            File.WriteAllText(temporary,value);
             for(int retry=0;;retry++) {
                 try {
                     if(File.Exists(file)) File.Replace(temporary,file,null);
@@ -859,45 +898,59 @@ class Listener : Form {
 }
 class CheckOverlay : Form {
     readonly System.Windows.Forms.Timer timer = new System.Windows.Forms.Timer();
-    readonly DateTime started = DateTime.UtcNow;
+    readonly System.Diagnostics.Stopwatch started = System.Diagnostics.Stopwatch.StartNew();
+    readonly int duration;
+    readonly bool mouse;
     readonly float scale;
-    public CheckOverlay(Point anchor) {
+    public CheckOverlay(Point anchor,bool mouseMode=false) {
+        mouse=mouseMode; duration=AppPreferences.CheckDuration;
         FormBorderStyle = FormBorderStyle.None; ShowInTaskbar = false; TopMost = true;
         uint dpi = 96;
         try { dpi = Native.GetDpiForWindow(Native.GetForegroundWindow()); } catch(EntryPointNotFoundException) { }
-        scale = Math.Max(1, dpi/96f);
+        scale = Math.Max(1, dpi/96f)*AppPreferences.CheckSize/22f;
         int size = (int)Math.Ceiling(22*scale);
         ClientSize = new Size(size,size);
         var area = Screen.FromPoint(anchor).WorkingArea;
         Location = new Point(Math.Max(area.Left, Math.Min(area.Right-size, anchor.X+(int)(4*scale))), Math.Max(area.Top, Math.Min(area.Bottom-size, anchor.Y-size/2)));
         timer.Interval = 16;
         timer.Tick += delegate {
-            double elapsed = (DateTime.UtcNow-started).TotalMilliseconds;
-            if(elapsed >= 700) { Close(); return; }
+            double elapsed = started.Elapsed.TotalMilliseconds;
+            if(elapsed >= duration) { Close(); return; }
             Render(elapsed);
         };
         Render(0); timer.Start();
     }
     protected override bool ShowWithoutActivation { get { return true; } }
     protected override CreateParams CreateParams { get { var p = base.CreateParams; p.ExStyle |= 0x08000000 | 0x20 | 0x80 | 0x80000; return p; } }
-    void Render(double elapsed) {
-      using(var bitmap = new Bitmap(Width,Height,System.Drawing.Imaging.PixelFormat.Format32bppArgb))
-      using(var graphics = Graphics.FromImage(bitmap)) {
+    internal static void DrawArtwork(Graphics graphics,float scale,bool mouse,double elapsed) {
         graphics.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.AntiAlias;
         graphics.ScaleTransform(scale,scale);
-        using(var pen = new Pen(Color.FromArgb(25,177,106),2.3f)) {
+        float entrance=(float)Math.Min(1,elapsed/150);
+        if(mouse) {
+            float zoom=.84f+.16f*(1-(float)Math.Pow(1-entrance,3));
+            graphics.TranslateTransform(11,11); graphics.ScaleTransform(zoom,zoom); graphics.TranslateTransform(-11,-11);
+            using(var shadow=new SolidBrush(Color.FromArgb(55,0,0,0))) graphics.FillEllipse(shadow,1,2,20,20);
+            using(var fill=new System.Drawing.Drawing2D.LinearGradientBrush(new Rectangle(1,1,20,20),Color.FromArgb(245,27,62,49),Color.FromArgb(245,16,37,31),90f)) graphics.FillEllipse(fill,1,1,20,20);
+            using(var rim=new Pen(Color.FromArgb(130,63,222,160),.7f)) graphics.DrawEllipse(rim,1,1,20,20);
+        }
+        using(var pen = new Pen(mouse ? Brand.Accent : Color.FromArgb(25,177,106),mouse ? 1.9f : 2.3f)) {
             pen.StartCap = pen.EndCap = System.Drawing.Drawing2D.LineCap.Round;
             float progress = Math.Min(1,(float)elapsed/170);
-            PointF a = new PointF(4,11), b = new PointF(9,16), c = new PointF(18,6);
+            PointF a = mouse ? new PointF(5.5f,11) : new PointF(4,11), b = mouse ? new PointF(9.2f,14.5f) : new PointF(9,16), c = mouse ? new PointF(16.5f,7.5f) : new PointF(18,6);
             if(progress < .4f) graphics.DrawLine(pen,a,new PointF(a.X+(b.X-a.X)*progress/.4f,a.Y+(b.Y-a.Y)*progress/.4f));
             else { graphics.DrawLine(pen,a,b); float t = (progress-.4f)/.6f; graphics.DrawLine(pen,b,new PointF(b.X+(c.X-b.X)*t,b.Y+(c.Y-b.Y)*t)); }
         }
+    }
+    void Render(double elapsed) {
+      using(var bitmap = new Bitmap(Width,Height,System.Drawing.Imaging.PixelFormat.Format32bppArgb))
+      using(var graphics = Graphics.FromImage(bitmap)) {
+        DrawArtwork(graphics,scale,mouse,elapsed);
         IntPtr dc = Native.GetDC(IntPtr.Zero), memory = Native.CreateCompatibleDC(dc);
         IntPtr image = bitmap.GetHbitmap(Color.FromArgb(0)), previous = Native.SelectObject(memory,image);
         try {
             var destination = new Native.Position { x = Left, y = Top };
             var origin = new Native.Position(); var size = new Native.Position { x = Width, y = Height };
-            var blend = new Native.Blend { alpha = (byte)(elapsed < 450 ? 255 : Math.Max(0,255*(700-elapsed)/250)), format = 1 };
+            var blend = new Native.Blend { alpha = AnimationStyle.Opacity(elapsed,duration), format = 1 };
             Native.UpdateLayeredWindow(Handle,dc,ref destination,ref size,memory,ref origin,0,ref blend,2);
         } finally { Native.SelectObject(memory,previous); Native.DeleteObject(image); Native.DeleteDC(memory); Native.ReleaseDC(IntPtr.Zero,dc); }
       }
