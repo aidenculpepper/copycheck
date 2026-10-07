@@ -1,6 +1,6 @@
-# CopyCheck Update 021 — Animation controls
+# CopyCheck Update 022 — Revert animation controls
 
-Version 1.0.21. Windows 10/11 x64. Run CopyCheckSetup.exe to install. Fresh installs enable startup and administrator mode. Upgrades preserve existing preferences.
+Version 1.0.22. Windows 10/11 x64. Run CopyCheckSetup.exe to install. Fresh installs enable startup and administrator mode. Upgrades preserve existing preferences.
 
 ## Update settings
 
@@ -45,5 +45,4 @@ Updates now matches the smaller muted Settings header.
 Checkmark next to mouse: OFF by default. Confirmed Ctrl+C text copies show beside the current pointer instead of selected text. Saved per user and applied immediately; copy-success checks and master animation switch remain required.
 Validation: 49 checks and app/Inno builds passed; settings rendering reviewed. Full live mouse-mode copy behavior remains untested.
 
-Size: Small (16), Medium (22, default), Large (30), scaled for display DPI. Duration: 0.45, 0.7 (default), 1.2 or 1.8 seconds. Both affect text and mouse feedback from the next copy. Mouse feedback is a compact dark-green badge with a mint checkmark, soft entrance and proportional fade. Mouse mode remains off by default.
-Validation: 66 checks passed including allowed presets, invalid preferences, duration/fade endpoints and inherited copy/startup/update/file-lock behavior. Settings and mouse artwork rendered and reviewed. App and Inno builds passed. Live multi-monitor mouse-copy behavior remains untested.
+Reverts Update 021: restores Update 020 settings and plain checkmark artwork, fixed 22-pixel size and 700 ms duration. Mouse placement preference remains available. Existing saved size/duration values are ignored.

@@ -1,1 +1,1 @@
-Add saved checkmark size and duration controls. Refine mouse feedback with a compact dark-green badge, crisp mint check, subtle scale-in and smooth fade. Default size and duration remain Medium and 0.7 seconds.
+Revert Update 021 animation controls and mouse badge. Restore the previous settings layout, plain checkmark, fixed size and duration. Keep the optional mouse placement setting.
