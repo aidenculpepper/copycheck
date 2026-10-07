@@ -340,6 +340,17 @@ class Toggle : CheckBox {
         if(Focused && ShowFocusCues) ControlPaint.DrawFocusRectangle(g,new Rectangle(5,5,Width-10,Height-10),ForeColor,BackColor);
     }
 }
+// A label drawn without the padding Windows adds before text, which grows with the font size and
+// pushed the larger headings to the right of the rows they sit above.
+class SectionLabel : Label {
+    const TextFormatFlags Flags = TextFormatFlags.Left | TextFormatFlags.Top | TextFormatFlags.SingleLine | TextFormatFlags.NoPadding;
+    public SectionLabel() { SetStyle(ControlStyles.UserPaint | ControlStyles.AllPaintingInWmPaint | ControlStyles.OptimizedDoubleBuffer,true); }
+    public override Size GetPreferredSize(Size proposedSize) { return TextRenderer.MeasureText(Text,Font,Size.Empty,Flags); }
+    protected override void OnPaint(PaintEventArgs e) {
+        e.Graphics.Clear(BackColor);
+        TextRenderer.DrawText(e.Graphics,Text,Font,ClientRectangle,ForeColor,Flags);
+    }
+}
 class UpdateStatusLabel : Label {
     bool showCheckmark;
     public UpdateStatusLabel() { SetStyle(ControlStyles.UserPaint | ControlStyles.AllPaintingInWmPaint | ControlStyles.OptimizedDoubleBuffer,true); }
@@ -371,8 +382,8 @@ class SettingsForm : Form {
         Font = new Font("Segoe UI",10); FormBorderStyle = FormBorderStyle.FixedDialog; MaximizeBox = false; MinimizeBox = false;
         StartPosition = FormStartPosition.Manual; AutoScaleMode = AutoScaleMode.Dpi;
         icon = Brand.CreateIcon(); Icon = icon;
-        var heading = new Label { Text = "CopyCheck", AutoSize = true, Font = new Font("Segoe UI Semibold",19), Location = new Point(24,14), ForeColor = Brand.Text };
-        var settingsLabel = new Label { Text = "Settings", AutoSize = true, Font = new Font("Segoe UI",10), Location = new Point(24,51), ForeColor = Color.FromArgb(155,168,183) };
+        var heading = new SectionLabel { Text = "CopyCheck", AutoSize = true, Font = new Font("Segoe UI Semibold",19), Location = new Point(24,14), ForeColor = Brand.Text };
+        var settingsLabel = new SectionLabel { Text = "Settings", AutoSize = true, Font = new Font("Segoe UI",10), Location = new Point(24,51), ForeColor = Color.FromArgb(155,168,183) };
         Controls.Add(heading); Controls.Add(settingsLabel);
         var animation = new Toggle { Text = "Copy checkmark", Checked = enabled, Location = new Point(24,83) };
         animation.CheckedChanged += delegate { if(AnimationChanged != null) AnimationChanged(animation.Checked); };
@@ -438,7 +449,7 @@ class SettingsForm : Form {
     UpdateStatusLabel updateStatus;
     Button checkUpdates, installUpdate;
     void AddUpdateControls() {
-        Controls.Add(new Label { Text="Updates",AutoSize=true,Font=new Font("Segoe UI",10),Location=new Point(24,348),ForeColor=Color.FromArgb(155,168,183) });
+        Controls.Add(new SectionLabel { Text="Updates",AutoSize=true,Font=new Font("Segoe UI",10),Location=new Point(24,348),ForeColor=Color.FromArgb(155,168,183) });
         Controls.Add(new Label { Text="Installed version "+Updates.Current,AutoSize=true,Location=new Point(24,653),ForeColor=Color.FromArgb(155,168,183),Font=new Font("Segoe UI",9) });
         var automatic=new Toggle { Text="Check automatically",Checked=AppPreferences.AutomaticUpdates,Location=new Point(24,383) };
         automatic.CheckedChanged += delegate {
