@@ -1,7 +1,7 @@
 [Setup]
 AppId={{B26608E9-B9A1-40C6-974F-C356D0B16CE9}
 AppName=CopyCheck
-AppVersion=1.0.22
+AppVersion=1.0.23
 AppPublisher=CopyCheck
 DefaultDirName={autopf}\CopyCheck
 DisableDirPage=yes
@@ -22,7 +22,7 @@ CloseApplications=yes
 RestartApplications=no
 AppMutex=Local\CopyCheck.Foundation
 UninstallDisplayName=CopyCheck
-VersionInfoVersion=1.0.22.0
+VersionInfoVersion=1.0.23.0
 
 [Tasks]
 Name: "desktopicon"; Description: "Create a &desktop shortcut"; GroupDescription: "Shortcuts:"; Flags: unchecked
@@ -32,6 +32,8 @@ Source: "CopyCheck.exe"; Flags: dontcopy
 Source: "CopyCheck.exe"; DestDir: "{app}"; Flags: ignoreversion
 Source: "CopyCheck.ico"; DestDir: "{app}"; Flags: ignoreversion
 Source: "installed.flag"; DestDir: "{app}"; Flags: ignoreversion
+
+Source: "LICENSE"; DestDir: "{app}"; Flags: ignoreversion
 
 [Icons]
 Name: "{group}\CopyCheck"; Filename: "{app}\CopyCheck.exe"; IconFilename: "{app}\CopyCheck.ico"
@@ -69,7 +71,7 @@ begin
     exit;
   end;
   if ResultCode = 1 then
-    Result := MsgBox('Install the bundled CopyCheck 1.0.22 version instead? It may not be the latest version.', mbConfirmation, MB_YESNO) = IDYES
+    Result := MsgBox('Install the bundled CopyCheck 1.0.23 version instead? It may not be the latest version.', mbConfirmation, MB_YESNO) = IDYES
   else Result := ResultCode = 0;
 end;
 

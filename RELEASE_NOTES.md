@@ -1,1 +1,1 @@
-Revert Update 021 animation controls and mouse badge. Restore the previous settings layout, plain checkmark, fixed size and duration. Keep the optional mouse placement setting.
+Publish merged PR #2: rewritten README, MIT license, social/share images and rendering scripts. Include the license with the installed app. App behavior remains the same as v1.0.22; size/duration controls and mouse badge remain reverted.

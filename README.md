@@ -110,6 +110,8 @@ To rebuild the share images in assets/ from the current code, run `scripts\socia
 
 ## Recent changes
 
+- 1.0.23: Published PR #2: rewritten README, MIT license, and social/share images. App behavior is unchanged.
+
 - 1.0.22: Reverted the size/duration controls and mouse badge from 1.0.21; restored the plain checkmark and kept mouse placement.
 - 1.0.21: Added animation controls and a mouse badge; reverted in 1.0.22.
 

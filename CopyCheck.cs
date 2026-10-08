@@ -10,8 +10,8 @@ using System.Security.Principal;
 using System.Reflection;
 [assembly: AssemblyTitle("CopyCheck")]
 [assembly: AssemblyProduct("CopyCheck")]
-[assembly: AssemblyVersion("1.0.22.0")]
-[assembly: AssemblyFileVersion("1.0.22.0")]
+[assembly: AssemblyVersion("1.0.23.0")]
+[assembly: AssemblyFileVersion("1.0.23.0")]
 
 namespace CopyCheck {
 static class Program {
@@ -550,7 +550,7 @@ static class Updates {
             return false;
         } finally { Busy=false; Notify(); }
     }
-    public static readonly Version Current = new Version(1,0,22);
+    public static readonly Version Current = new Version(1,0,23);
     public const string Api = "https://api.github.com/repos/aidenculpepper/copycheck/releases/latest";
     public static ReleaseInfo Available;
     public static bool Busy;
