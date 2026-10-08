@@ -42,7 +42,7 @@ The updater makes the only network requests: one to GitHub's latest-release API 
 
 ## Proof
 
-The repository has no automated test suite. Each release's notes list the checks run before it shipped; for 1.0.20 those were 49 passing checks plus successful app and installer builds. The notes are also plain about what hasn't been tested yet (see Limits).
+The repository has no automated test suite. Each release's notes list the checks run before it shipped; for 1.0.22 those were 49 passing checks plus successful app and installer builds. The notes are also plain about what hasn't been tested yet (see Limits).
 
 CopyCheck.cs compiled cleanly with the .NET Framework 4 C# compiler on 2026-10-06, when the share images in assets/ were rendered from it.
 
@@ -109,6 +109,9 @@ The publish-release.yml workflow checks the installer against release.json and c
 To rebuild the share images in assets/ from the current code, run `scripts\social\Build-SocialImages.ps1`.
 
 ## Recent changes
+
+- 1.0.22: Reverted the size/duration controls and mouse badge from 1.0.21; restored the plain checkmark and kept mouse placement.
+- 1.0.21: Added animation controls and a mouse badge; reverted in 1.0.22.
 
 - 1.0.20: Added Checkmark next to mouse, off by default and saved per user.
 - 1.0.19: The Updates heading matches the smaller, muted Settings label.

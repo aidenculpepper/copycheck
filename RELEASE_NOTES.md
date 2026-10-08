@@ -1,1 +1,1 @@
-Add Checkmark next to mouse setting, off by default. Successful Ctrl+C text copies show feedback beside the pointer instead of selected text when enabled. Save preference across restarts.
+Revert Update 021 animation controls and mouse badge. Restore the previous settings layout, plain checkmark, fixed size and duration. Keep the optional mouse placement setting.

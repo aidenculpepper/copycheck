@@ -10,8 +10,8 @@ using System.Security.Principal;
 using System.Reflection;
 [assembly: AssemblyTitle("CopyCheck")]
 [assembly: AssemblyProduct("CopyCheck")]
-[assembly: AssemblyVersion("1.0.20.0")]
-[assembly: AssemblyFileVersion("1.0.20.0")]
+[assembly: AssemblyVersion("1.0.22.0")]
+[assembly: AssemblyFileVersion("1.0.22.0")]
 
 namespace CopyCheck {
 static class Program {
@@ -340,6 +340,17 @@ class Toggle : CheckBox {
         if(Focused && ShowFocusCues) ControlPaint.DrawFocusRectangle(g,new Rectangle(5,5,Width-10,Height-10),ForeColor,BackColor);
     }
 }
+// A label drawn without the padding Windows adds before text, which grows with the font size and
+// pushed the larger headings to the right of the rows they sit above.
+class SectionLabel : Label {
+    const TextFormatFlags Flags = TextFormatFlags.Left | TextFormatFlags.Top | TextFormatFlags.SingleLine | TextFormatFlags.NoPadding;
+    public SectionLabel() { SetStyle(ControlStyles.UserPaint | ControlStyles.AllPaintingInWmPaint | ControlStyles.OptimizedDoubleBuffer,true); }
+    public override Size GetPreferredSize(Size proposedSize) { return TextRenderer.MeasureText(Text,Font,Size.Empty,Flags); }
+    protected override void OnPaint(PaintEventArgs e) {
+        e.Graphics.Clear(BackColor);
+        TextRenderer.DrawText(e.Graphics,Text,Font,ClientRectangle,ForeColor,Flags);
+    }
+}
 class UpdateStatusLabel : Label {
     bool showCheckmark;
     public UpdateStatusLabel() { SetStyle(ControlStyles.UserPaint | ControlStyles.AllPaintingInWmPaint | ControlStyles.OptimizedDoubleBuffer,true); }
@@ -371,8 +382,9 @@ class SettingsForm : Form {
         Font = new Font("Segoe UI",10); FormBorderStyle = FormBorderStyle.FixedDialog; MaximizeBox = false; MinimizeBox = false;
         StartPosition = FormStartPosition.Manual; AutoScaleMode = AutoScaleMode.Dpi;
         icon = Brand.CreateIcon(); Icon = icon;
-        Controls.Add(new Label { Text = "CopyCheck", AutoSize = true, Font = new Font("Segoe UI Semibold",19), Location = new Point(24,14), ForeColor = Brand.Text });
-        Controls.Add(new Label { Text = "Settings", AutoSize = true, Font = new Font("Segoe UI",10), Location = new Point(24,51), ForeColor = Color.FromArgb(155,168,183) });
+        var heading = new SectionLabel { Text = "CopyCheck", AutoSize = true, Font = new Font("Segoe UI Semibold",19), Location = new Point(24,14), ForeColor = Brand.Text };
+        var settingsLabel = new SectionLabel { Text = "Settings", AutoSize = true, Font = new Font("Segoe UI",10), Location = new Point(24,51), ForeColor = Color.FromArgb(155,168,183) };
+        Controls.Add(heading); Controls.Add(settingsLabel);
         var animation = new Toggle { Text = "Copy checkmark", Checked = enabled, Location = new Point(24,83) };
         animation.CheckedChanged += delegate { if(AnimationChanged != null) AnimationChanged(animation.Checked); };
         Controls.Add(animation);
@@ -423,12 +435,21 @@ class SettingsForm : Form {
         };
         Controls.Add(admin);
         AddUpdateControls();
+        // Fonts are sized in points and grow with the display scale, but these positions are fixed
+        // pixels. Above 100% the heading outgrows its slot and covers the Settings label, so move the
+        // label below the heading and push every row down by the same overflow.
+        int settingsTop = Math.Max(51,heading.Bottom+1), shift = Math.Max(0,settingsTop+settingsLabel.Height+9-83);
+        settingsLabel.Top = settingsTop;
+        if(shift > 0) {
+            foreach(Control control in Controls) if(control != heading && control != settingsLabel) control.Top += shift;
+            ClientSize = new Size(ClientSize.Width,ClientSize.Height+shift);
+        }
     }
 
     UpdateStatusLabel updateStatus;
     Button checkUpdates, installUpdate;
     void AddUpdateControls() {
-        Controls.Add(new Label { Text="Updates",AutoSize=true,Font=new Font("Segoe UI",10),Location=new Point(24,348),ForeColor=Color.FromArgb(155,168,183) });
+        Controls.Add(new SectionLabel { Text="Updates",AutoSize=true,Font=new Font("Segoe UI",10),Location=new Point(24,348),ForeColor=Color.FromArgb(155,168,183) });
         Controls.Add(new Label { Text="Installed version "+Updates.Current,AutoSize=true,Location=new Point(24,653),ForeColor=Color.FromArgb(155,168,183),Font=new Font("Segoe UI",9) });
         var automatic=new Toggle { Text="Check automatically",Checked=AppPreferences.AutomaticUpdates,Location=new Point(24,383) };
         automatic.CheckedChanged += delegate {
@@ -529,7 +550,7 @@ static class Updates {
             return false;
         } finally { Busy=false; Notify(); }
     }
-    public static readonly Version Current = new Version(1,0,20);
+    public static readonly Version Current = new Version(1,0,22);
     public const string Api = "https://api.github.com/repos/aidenculpepper/copycheck/releases/latest";
     public static ReleaseInfo Available;
     public static bool Busy;
